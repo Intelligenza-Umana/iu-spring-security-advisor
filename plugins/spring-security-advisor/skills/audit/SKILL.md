@@ -25,13 +25,13 @@ The score is computed by the script, not by you. Your job is to read the code ho
    - `yes`: the code does it. Needs `evidence`: a list of `path/relative/to/root:LINE`.
    - `partial`: done in some places or in part. Needs evidence too.
    - `no`: the mechanism is absent or wrong. Evidence is optional (a missing mechanism has no line).
-   - `not_applicable`: the item does not apply (for example cookies when authentication is token-only). Say why in `note`.
+   - `not_applicable`: the item does not apply (for example cookies when authentication is token-only). It needs a note saying why; without one the script discards it. Items marked `not_applicable` count as not assessed, so use it only when it is true.
    - `cannot_determine`: you could not decide from the code (logic in infrastructure, unreadable, too indirect). Prefer this to a guess.
    Add a short `note` for each answer. Verify framework facts with a documentation tool (for example Context7) when available and mark anything unchecked as **unverified** in the note.
 5. **Write the answers file in a temporary directory, not in the project:** `{"answers": [{"id": "TOK-05", "answer": "no", "evidence": [], "note": "..."}, ...]}`.
 6. **Score:** `$SCAN score <root> --answers <file>` (add `--format text` for a readable table, but keep the JSON for yourself). If `<root>/.spring-security-advisor/last-audit.json` exists, add `--baseline` with it to show the change. Ask the user before using `--save`, which writes that file inside their project.
 7. **Report**, in this order:
-   - the total score and grade. If `provisional` is true, say so first: less than 70% of the checklist could be assessed, so the number is a rough guide.
+   - the total score and grade. If `provisional` is true, say so first and list `provisional_reasons` (less than 70% of the checklist assessed, a critical item or a whole category not assessed): the number is a rough guide. If the grade is withheld (less than half of the checklist assessed), say that no grade is given and why; never invent one.
    - a table with the score of each category and its basis (`checklist`, `rules_only`, or no data).
    - the `caps_applied` if any, in one sentence each.
    - the top actions from `top_actions`, each with why it matters and a concrete fix.

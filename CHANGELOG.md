@@ -7,6 +7,8 @@
 - Checklist of 31 items in 9 categories, each with a verified source.
 - Config reader for `application*.properties` and `application*.yml` (no dependencies).
 - Findings carry a `category`. `review` stays as the fast rules-only check; `map` includes the signals.
+- Test source sets are recognised by their `src/<set>` directory, so main code in packages named `it` or `test` is scanned and `testFixtures`, `integration-test` or `e2e` are skipped.
+- The score cannot be reached by skipping items: coverage counts all items, `not_applicable` needs a note, and unassessed critical items or categories make the score provisional (no grade below 50% coverage).
 - Stable from this version: the JSON output of `scan`, `map`, `checklist` and `score`.
 
 ## 0.2.0

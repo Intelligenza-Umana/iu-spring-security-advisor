@@ -67,11 +67,11 @@ Rules cannot see everything. 31 checklist items cover what needs reading: for ex
 
 `scan.py score` combines the findings and the checklist answers.
 
-- **Answers:** `yes` (full weight), `partial` (half), `no` (zero), `not_applicable` (left out) and `cannot_determine` (left out, lowers coverage). `yes` and `partial` need `file:line` evidence; the script checks that the file exists inside the project and the line is in it, and otherwise treats the answer as `cannot_determine`.
+- **Answers:** `yes` (full weight), `partial` (half), `no` (zero), `not_applicable` (left out of the points) and `cannot_determine` (left out of the points). `yes` and `partial` need `file:line` evidence; the script checks that the file exists inside the project and the line is in it, and otherwise treats the answer as `cannot_determine`. `not_applicable` needs a note saying why, and counts as not assessed.
 - **Category score** (0-100): points earned over points available for that category, minus the penalty of its findings: high / medium / low = 20 / 10 / 3 points, and repeats of the same rule weigh 25% after the first. A category with nothing assessed has no score and is left out.
 - **Total:** the weighted average of the categories. Caps: a high certain-bug finding limits the total to 69; a critical checklist item (weight 3) answered `no` limits it to 79.
-- **Grade:** A from 90, B from 80, C from 70, D from 60, F below.
-- **Coverage:** the share of applicable items that could be assessed. Below 70% the score is labeled *provisional*.
+- **Grade:** A from 90, B from 80, C from 70, D from 60, F below. No grade is given when less than half of the checklist was assessed.
+- **Coverage:** the share of all checklist items that were assessed (`not_applicable` and `cannot_determine` items are not assessed). The score is labeled *provisional*, with the reasons printed, when coverage is below 70%, when a critical item (weight 3) was not assessed, or when a whole category was not assessed. Skipping hard items does not raise the score; it makes it provisional.
 
 | Category | Weight |
 |---|---|
@@ -91,8 +91,17 @@ Real output on the `refresh-race` test fixture, a project with a refresh endpoin
 
 ```text
 Security score: 8/100 (provisional)
-Grade: F (provisional)
-Coverage: 13% (provisional: less than 70% of the applicable checklist could be assessed)
+Grade: not assigned (less than half of the checklist was assessed)
+Coverage: 13% (4 of 31 items assessed, 0 not applicable, 27 could not be determined)
+Provisional because:
+- only 4 of 31 checklist items were assessed (under 70%)
+- critical items not assessed: AUTH-01, AUTH-03, AUTHZ-01, AUTHZ-02, PWD-01, RATE-02, TOK-07, TOK-09
+- category Authorization was not assessed
+- category Authentication was not assessed
+- category Passwords was not assessed
+- category Session, CSRF and CORS was not assessed
+- category Headers and actuator was not assessed
+- category Input, data and logs was not assessed
 Cap: critical checklist item answered no (CFG-01, TOK-05): total capped at 79
 
 Categories:

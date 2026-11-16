@@ -20,6 +20,7 @@ CAP_CERTAIN_BUG = 69
 CAP_CRITICAL_NO = 79
 GRADE_STEPS = ((90, "A"), (80, "B"), (70, "C"), (60, "D"))
 PROVISIONAL_BELOW = 0.70
+NO_GRADE_BELOW = 0.50
 MAX_ACTIONS = 5
 EVIDENCE_RE = re.compile(r"^(.+):(\d+)(?:-(\d+))?$")
 
@@ -87,6 +88,10 @@ def validate_answers(doc, items: list[dict], root: Path) -> tuple[dict[str, dict
             warnings.append(f"{item_id}: invalid answer {answer!r}, treated as cannot_determine")
             effective[item_id] = {"answer": "cannot_determine", "evidence": [], "note": note, "reason": "invalid answer"}
             continue
+        if answer == "not_applicable" and not note.strip():
+            warnings.append(f"{item_id}: not_applicable needs a note saying why, treated as cannot_determine")
+            effective[item_id] = {"answer": "cannot_determine", "evidence": [], "note": note, "reason": "no note"}
+            continue
         if answer in ("yes", "partial"):
             valid, problems = [], []
             for entry in evidence:
@@ -109,14 +114,19 @@ def _category_of(finding: dict, rules: dict) -> str | None:
 def _compute(findings: list[dict], effective: dict[str, dict], checklist: dict, rules: dict) -> dict:
     categories = checklist["categories"]
     state = {cid: {"earned": 0.0, "available": 0.0, "penalty": 0.0} for cid in categories}
-    applicable = determinable = 0
+    determinable = not_applicable = 0
     critical_no: list[str] = []
+    critical_unassessed: list[str] = []
+    categories_unassessed: set[str] = set()
     for item in checklist["items"]:
         answer = effective.get(item["id"], {}).get("answer", "cannot_determine")
         if answer == "not_applicable":
+            not_applicable += 1
             continue
-        applicable += 1
         if answer not in DETERMINABLE:
+            categories_unassessed.add(item["category"])
+            if item["weight"] == 3:
+                critical_unassessed.append(item["id"])
             continue
         determinable += 1
         weight = item["weight"]
@@ -166,12 +176,23 @@ def _compute(findings: list[dict], effective: dict[str, dict], checklist: dict, 
         if critical_no:
             caps.append(f"critical checklist item answered no ({', '.join(sorted(critical_no))}): total capped at {CAP_CRITICAL_NO}")
             total = min(total, CAP_CRITICAL_NO)
-    coverage = round(determinable / applicable, 2) if applicable else 0.0
+    total_items = len(checklist["items"])
+    coverage = round(determinable / total_items, 2) if total_items else 0.0
+    reasons: list[str] = []
+    if coverage < PROVISIONAL_BELOW:
+        reasons.append(f"only {determinable} of {total_items} checklist items were assessed (under 70%)")
+    if critical_unassessed:
+        reasons.append(f"critical items not assessed: {', '.join(sorted(critical_unassessed))}")
+    for cid in categories:
+        if state[cid]["available"] == 0 and cid in categories_unassessed:
+            reasons.append(f"category {categories[cid]['label']} was not assessed")
     grade = None
-    if total is not None:
+    if total is not None and coverage >= NO_GRADE_BELOW:
         grade = next((g for floor, g in GRADE_STEPS if total >= floor), "F")
-    return {"total": total, "grade": grade, "provisional": coverage < PROVISIONAL_BELOW, "coverage": coverage,
-            "caps_applied": caps, "categories": out_categories}
+    return {"total": total, "grade": grade, "provisional": bool(reasons), "provisional_reasons": reasons,
+            "coverage": coverage, "caps_applied": caps, "categories": out_categories,
+            "items": {"total": total_items, "assessed": determinable, "not_applicable": not_applicable,
+                      "cannot_determine": total_items - determinable - not_applicable}}
 
 
 def compute_score(findings: list[dict], effective: dict[str, dict], checklist: dict, rules: dict) -> dict:
@@ -206,8 +227,16 @@ def format_score_text(result: dict) -> str:
     lines.append(f"Security score: {head}")
     if result["grade"]:
         lines.append(f"Grade: {result['grade']}{tag}")
-    note = "provisional: less than 70% of the applicable checklist could be assessed" if result["provisional"] else "coverage is sufficient"
-    lines.append(f"Coverage: {int(result['coverage'] * 100)}% ({note})")
+    elif total is not None:
+        lines.append("Grade: not assigned (less than half of the checklist was assessed)")
+    n = result["items"]
+    lines.append(
+        f"Coverage: {_half_up(result['coverage'] * 100)}% ({n['assessed']} of {n['total']} items assessed, "
+        f"{n['not_applicable']} not applicable, {n['cannot_determine']} could not be determined)"
+    )
+    if result["provisional_reasons"]:
+        lines.append("Provisional because:")
+        lines.extend(f"- {reason}" for reason in result["provisional_reasons"])
     for cap in result["caps_applied"]:
         lines.append(f"Cap: {cap}")
     if "delta" in result:

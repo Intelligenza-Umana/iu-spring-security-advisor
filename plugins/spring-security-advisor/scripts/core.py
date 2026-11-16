@@ -92,11 +92,22 @@ def line_of(text: str, pos: int) -> int:
     return text.count("\n", 0, pos) + 1
 
 
+TEST_SOURCE_SET = re.compile(r"(?i)test|^it$|^e2e$|integ")
+
+
 def is_test_path(path: Path, root: Path) -> bool:
+    """Test code is decided by the source-set directory (src/<set>/...), never by package or class names.
+
+    `src/main/java/it/acme/Shop.java` is main code; `src/testFixtures`, `src/integration-test`, `src/e2e`
+    and `src/it` are test source sets. Without a `src/<set>/` layout the old convention is used.
+    """
     parts = path.relative_to(root).parts
-    return any(p in ("test", "tests", "it", "integrationTest") for p in parts[:-1]) or path.name.endswith(
-        ("Test.java", "Tests.java", "IT.java")
-    )
+    directories = parts[:-1]
+    if "src" in directories:
+        index = directories.index("src")
+        if index + 1 < len(directories):
+            return bool(TEST_SOURCE_SET.search(directories[index + 1]))
+    return any(p in ("test", "tests") for p in directories) or path.name.endswith(("Test.java", "Tests.java", "IT.java"))
 
 
 class Project:

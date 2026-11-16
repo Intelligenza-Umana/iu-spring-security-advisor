@@ -38,6 +38,13 @@ class SkillStructure(unittest.TestCase):
                        "temporary directory", "read-only", "never say", "--baseline", "--save"]:
             self.assertIn(needle, low, needle)
 
+    def test_audit_explains_not_applicable_and_grade_rules(self):
+        _, body = read_skill("audit")
+        low = body.lower()
+        self.assertIn("needs a note", low)
+        self.assertIn("provisional_reasons", body)
+        self.assertIn("grade is withheld", low)
+
     def test_review_points_to_audit_and_is_read_only(self):
         _, body = read_skill("review")
         self.assertIn("/spring-security-advisor:audit", body)

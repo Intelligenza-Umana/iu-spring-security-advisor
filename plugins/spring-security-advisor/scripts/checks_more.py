@@ -12,9 +12,15 @@ from signals import PATTERNS
 SECRET_KEY = re.compile(r"secret|password|passwd|token|api-?key|private-?key|credential")
 NON_SECRET_SUFFIXES = (
     "-expiration", "-ttl", "-validity", "-length", "-policy", "-enabled", "-header", "-prefix",
-    "-uri", "-url", "-name", "-type", "-endpoint", "-algorithm",
+    "-uri", "-url", "-name", "-type", "-endpoint", "-algorithm", "-time-to-live", "-duration", "-format",
+    "-file", "-path", "-issuer", "-encoder", "-provider", "-location",
 )
-NOT_A_SECRET_VALUE = re.compile(r"^(true|false|\d+(\.\d+)?)$", re.I)
+NON_SECRET_KEY_PREFIXES = ("logging.level.", "logging.group.")
+NOT_A_SECRET_VALUE = re.compile(
+    r"^(true|false|\d+(\.\d+)?|P(T)?[\dHMSDW.]+|\d+\s*(ns|us|ms|s|m|h|d)|[a-z][a-z0-9+.-]*://\S*"
+    r"|(classpath\*?|file):\S*|\.{0,2}/\S*|#\{.*|ENC\(.*)$",
+    re.I,
+)
 PLACEHOLDER = re.compile(r"^\$\{[^}:]*(?::(.*))?\}$", re.S)
 DEV_PROFILE = re.compile(r"^application-(dev|development|local|test|h2|sample|example)\b", re.I)
 
@@ -28,6 +34,8 @@ def check_sec008(project, rules):
         dev = bool(DEV_PROFILE.match(path.name))
         for key, (value, line) in entries.items():
             last = _last_segment(key)
+            if key.startswith(NON_SECRET_KEY_PREFIXES):
+                continue
             if not SECRET_KEY.search(last) or last.endswith(NON_SECRET_SUFFIXES):
                 continue
             value = value.strip()
@@ -36,6 +44,8 @@ def check_sec008(project, rules):
             placeholder = PLACEHOLDER.match(value)
             if placeholder and not (placeholder.group(1) or "").strip():
                 continue
+            if "${" in value and not placeholder:
+                continue  # composite placeholders: the value is built from the environment
             embedded_default = bool(placeholder)
             low = dev or embedded_default
             detail = (
@@ -272,10 +282,40 @@ def check_sec022(project, rules):
 
 REFRESH_RE = re.compile(PATTERNS["refresh_token"])
 LOCKING_RE = re.compile(PATTERNS["locking"])
-LOOKUP_THEN_REVOKE = re.compile(
-    r"\.(?:find|get|load|read)\w*\s*\(.*?\.(?:save|saveAndFlush|delete\w*|revoke\w*|setRevoked|remove\w*)\s*\(",
-    re.S,
-)
+LOOKUP_CALL = re.compile(r"\.(?:find|load|read|fetch)\w*\s*\(|\.getBy\w*\s*\(")
+REVOKE_CALL = re.compile(r"\.(?:save|saveAndFlush|delete\w*|revoke\w*|remove\w*)\s*\(|\bsetRevoked\s*\(")
+MAX_BLOCK = 5000
+
+
+def _statement(text: str, pos: int) -> str:
+    start = max(text.rfind(c, 0, pos) for c in ";{}") + 1
+    end = text.find(";", pos)
+    return text[start : len(text) if end == -1 else end]
+
+
+def _rest_of_block(text: str, pos: int) -> str:
+    """Text after pos up to the end of the enclosing block (or MAX_BLOCK characters)."""
+    depth, limit = 0, min(len(text), pos + MAX_BLOCK)
+    for i in range(pos, limit):
+        c = text[i]
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            if depth == 0:
+                return text[pos:i]
+            depth -= 1
+    return text[pos:limit]
+
+
+def _lookup_then_revoke(text: str):
+    """Position of a refresh-token lookup followed, in the same block, by a revoke or save."""
+    for match in LOOKUP_CALL.finditer(text):
+        if not REFRESH_RE.search(_statement(text, match.start())):
+            continue
+        end = text.find(";", match.end())
+        if REVOKE_CALL.search(_rest_of_block(text, len(text) if end == -1 else end)):
+            return match.start()
+    return None
 
 
 def check_sec023(project, rules):
@@ -283,10 +323,10 @@ def check_sec023(project, rules):
     if not refresh_files or any(LOCKING_RE.search(text) for _path, text in refresh_files):
         return
     for path, text in refresh_files:
-        match = LOOKUP_THEN_REVOKE.search(text)
-        if match:
+        position = _lookup_then_revoke(text)
+        if position is not None:
             yield make_finding(
-                rules, "SEC023", project, path, line_of(text, match.start()),
+                rules, "SEC023", project, path, line_of(text, position),
                 "A refresh token is looked up and then revoked or replaced, and no lock, version column or "
                 "atomic update was found on the refresh path: two concurrent requests could both succeed.",
                 confidence="medium",
