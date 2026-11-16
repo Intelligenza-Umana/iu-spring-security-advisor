@@ -1,0 +1,415 @@
+{
+  "categories": {
+    "tokens": {
+      "label": "Tokens",
+      "weight": 20
+    },
+    "authorization": {
+      "label": "Authorization",
+      "weight": 20
+    },
+    "authentication": {
+      "label": "Authentication",
+      "weight": 15
+    },
+    "rate_limiting": {
+      "label": "Rate limiting",
+      "weight": 10
+    },
+    "passwords": {
+      "label": "Passwords",
+      "weight": 10
+    },
+    "session_csrf_cors": {
+      "label": "Session, CSRF and CORS",
+      "weight": 10
+    },
+    "secrets_config": {
+      "label": "Secrets and configuration",
+      "weight": 8
+    },
+    "headers_actuator": {
+      "label": "Headers and actuator",
+      "weight": 4
+    },
+    "data_logging": {
+      "label": "Input, data and logs",
+      "weight": 3
+    }
+  },
+  "items": [
+    {
+      "id": "TOK-01",
+      "category": "tokens",
+      "weight": 2,
+      "question": "Do access tokens carry an expiration (exp) and live for minutes rather than days?",
+      "look_for": "Token creation code (Jwts.builder, JwtEncoder, NimbusJwtEncoder) and where the lifetime is configured; any literal lifetime above one hour.",
+      "signals": [
+        "jwt_validation"
+      ],
+      "source": "OWASP REST Security Cheat Sheet (JWT section); JJWT reference: JwtBuilder.expiration()",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "TOK-02",
+      "category": "tokens",
+      "weight": 3,
+      "question": "Is a refresh token single-use: every refresh issues a new refresh token and invalidates the old one?",
+      "look_for": "The refresh service or endpoint: after a successful refresh the old token is marked revoked or deleted and a new one is returned.",
+      "signals": [
+        "refresh_token"
+      ],
+      "source": "OWASP OAuth 2.0 Cheat Sheet (refresh token rotation); Spring Authorization Server: TokenSettings.reuseRefreshTokens",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "TOK-04",
+      "category": "tokens",
+      "weight": 2,
+      "question": "If an already-used refresh token is presented again, is that detected and are the related tokens revoked?",
+      "look_for": "The branch of the refresh service for a token that is already revoked: does it only reject, or does it also revoke the token family or session?",
+      "signals": [
+        "refresh_token",
+        "token_revocation"
+      ],
+      "source": "OWASP OAuth 2.0 Cheat Sheet (rotation to detect replay); Spring Authorization Server: OAuth2AuthorizationCodeAuthenticationProvider (invalidates issued tokens on code reuse)",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "TOK-05",
+      "category": "tokens",
+      "weight": 3,
+      "question": "Are the check and the revocation of a refresh token atomic, so two concurrent requests with the same token cannot both succeed?",
+      "look_for": "A lock on the lookup (@Lock PESSIMISTIC_WRITE), an @Version column, a conditional UPDATE ... WHERE revoked = false whose updated row count is checked, or a unique constraint on the replacement token.",
+      "signals": [
+        "refresh_token",
+        "locking"
+      ],
+      "source": "Spring Data JPA reference: Locking (@Lock); OWASP OAuth 2.0 Cheat Sheet (refresh token rotation)",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "TOK-06",
+      "category": "tokens",
+      "weight": 2,
+      "question": "Does logout invalidate the server-side session or revoke the refresh token, not only delete it on the client?",
+      "look_for": "The logout handler or endpoint and what it does to stored sessions or refresh tokens.",
+      "signals": [
+        "logout",
+        "token_revocation"
+      ],
+      "source": "OWASP Session Management Cheat Sheet (server-side invalidation); OWASP REST Security Cheat Sheet (JWT section)",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "TOK-07",
+      "category": "tokens",
+      "weight": 3,
+      "question": "Does JWT validation use a configured algorithm and key (never the token header), reject unsigned tokens and check expiration?",
+      "look_for": "JwtDecoder / parser configuration: algorithm, key, calls that accept unsecured tokens, exp enforcement.",
+      "signals": [
+        "jwt_validation"
+      ],
+      "source": "OWASP REST Security Cheat Sheet (JWT section)",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "TOK-08",
+      "category": "tokens",
+      "weight": 2,
+      "question": "Are the issuer (iss) and audience (aud) of a JWT validated?",
+      "look_for": "Validators attached to the decoder or parser (issuer and audience checks).",
+      "signals": [
+        "jwt_validation"
+      ],
+      "source": "OWASP REST Security Cheat Sheet (JWT section)",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "TOK-09",
+      "category": "tokens",
+      "weight": 3,
+      "question": "Is the signing key loaded from configuration or a secret store rather than written in the source?",
+      "look_for": "Where the key or secret is created: literal in code, property placeholder, secret store.",
+      "signals": [],
+      "source": "Spring Boot reference: Externalized Configuration; OWASP Secrets Management Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "AUTH-01",
+      "category": "authentication",
+      "weight": 3,
+      "question": "Are repeated failed logins throttled or temporarily locked out?",
+      "look_for": "Login handler or filter: failed-attempt counter, lockout, delay, or an upstream limiter on the login path.",
+      "signals": [
+        "login_throttling"
+      ],
+      "source": "OWASP Authentication Cheat Sheet (Login Throttling)",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "AUTH-02",
+      "category": "authentication",
+      "weight": 2,
+      "question": "Do login and registration responses stay the same whether or not the user exists?",
+      "look_for": "Error messages and status codes of the login and registration flows for unknown users versus wrong passwords.",
+      "signals": [],
+      "source": "OWASP Authentication Cheat Sheet (generic error messages)",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "AUTH-03",
+      "category": "authentication",
+      "weight": 3,
+      "question": "Are password reset tokens single-use and short-lived, and does the reset response stay the same for unknown accounts?",
+      "look_for": "Reset token creation, expiry and consumption; response when the email is unknown.",
+      "signals": [
+        "password_reset"
+      ],
+      "source": "OWASP Forgot Password Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "AUTH-04",
+      "category": "authentication",
+      "weight": 1,
+      "question": "Does changing the password require the current password?",
+      "look_for": "The change-password endpoint or service.",
+      "signals": [],
+      "source": "OWASP Authentication Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "RATE-01",
+      "category": "rate_limiting",
+      "weight": 2,
+      "question": "Is there a global rate limit on the API that answers 429 when exceeded?",
+      "look_for": "Filter, gateway or library limiting requests per client; the status code returned.",
+      "signals": [
+        "rate_limiting"
+      ],
+      "source": "OWASP REST Security Cheat Sheet (429 Too Many Requests); OWASP Denial of Service Cheat Sheet (rate limiting)",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "RATE-02",
+      "category": "rate_limiting",
+      "weight": 3,
+      "question": "Does the login endpoint have its own, stricter limit?",
+      "look_for": "A limit keyed to the login path or to the username or IP, tighter than the global one.",
+      "signals": [
+        "rate_limiting",
+        "login_throttling"
+      ],
+      "source": "OWASP Authentication Cheat Sheet (Login Throttling); OWASP Credential Stuffing Prevention Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "RATE-03",
+      "category": "rate_limiting",
+      "weight": 2,
+      "question": "Are token refresh, password reset and registration endpoints rate limited too?",
+      "look_for": "Limits on the refresh, reset and sign-up paths.",
+      "signals": [
+        "rate_limiting"
+      ],
+      "source": "OWASP Credential Stuffing Prevention Cheat Sheet; OWASP Denial of Service Cheat Sheet (rate limiting)",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "AUTHZ-01",
+      "category": "authorization",
+      "weight": 3,
+      "question": "Do the authorization rules deny by default (anyRequest().authenticated() or denyAll())?",
+      "look_for": "The last rule of every SecurityFilterChain and any permitAll on broad patterns.",
+      "signals": [],
+      "source": "OWASP Authorization Cheat Sheet (Deny by Default); Spring Security 7.0 reference: Authorize HttpServletRequests",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "AUTHZ-02",
+      "category": "authorization",
+      "weight": 3,
+      "question": "Do endpoints that take an object id check that the object belongs to, or is allowed for, the caller?",
+      "look_for": "Controllers and services with {id} parameters: ownership or permission checks before reading or changing the object (IDOR).",
+      "signals": [],
+      "source": "OWASP Insecure Direct Object Reference Prevention Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "AUTHZ-03",
+      "category": "authorization",
+      "weight": 2,
+      "question": "Are sensitive service methods protected by method security or an equivalent check, not only by URL rules?",
+      "look_for": "@PreAuthorize or explicit checks on service methods that are reachable from several controllers or jobs.",
+      "signals": [],
+      "source": "OWASP Authorization Cheat Sheet (validate permissions on every request); Spring Security reference: Method Security",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "AUTHZ-04",
+      "category": "authorization",
+      "weight": 2,
+      "question": "Do request bodies bind to DTOs that contain only editable fields, not directly to entities?",
+      "look_for": "@RequestBody parameter types: entities with sensitive fields (role, admin, balance) versus dedicated DTOs.",
+      "signals": [],
+      "source": "OWASP Mass Assignment Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "SESS-01",
+      "category": "session_csrf_cors",
+      "weight": 2,
+      "question": "If cookies carry the session or token, are Secure, HttpOnly and SameSite set?",
+      "look_for": "Cookie creation code and the server.servlet.session.cookie.* properties.",
+      "signals": [],
+      "source": "OWASP Session Management Cheat Sheet; Spring Boot application properties: server.servlet.session.cookie.*",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "SESS-02",
+      "category": "session_csrf_cors",
+      "weight": 2,
+      "question": "Does CSRF protection match the authentication model (on for cookie sessions; off only for token-only APIs)?",
+      "look_for": "csrf() configuration, session policy and whether authentication travels in cookies or in an Authorization header.",
+      "signals": [],
+      "source": "OWASP Cross-Site Request Forgery Prevention Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "SESS-03",
+      "category": "session_csrf_cors",
+      "weight": 2,
+      "question": "Does CORS allow only the real front-end origins?",
+      "look_for": "CorsConfiguration, @CrossOrigin and WebMvcConfigurer.addCorsMappings: wildcard origins, credentials.",
+      "signals": [],
+      "source": "Spring Framework reference: Web MVC CORS",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "PWD-01",
+      "category": "passwords",
+      "weight": 3,
+      "question": "Are passwords stored with an adaptive encoder (BCrypt, Argon2, PBKDF2, SCrypt) through PasswordEncoder, with upgrade support?",
+      "look_for": "PasswordEncoder beans and where passwords are hashed.",
+      "signals": [],
+      "source": "OWASP Password Storage Cheat Sheet; Spring Security 7.0 reference: Password Storage",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "PWD-02",
+      "category": "passwords",
+      "weight": 1,
+      "question": "Are long passwords accepted (at least 64 characters) and never silently truncated?",
+      "look_for": "Validation rules on password length at registration and change.",
+      "signals": [],
+      "source": "OWASP Authentication Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "CFG-01",
+      "category": "secrets_config",
+      "weight": 3,
+      "question": "Do secrets (database, keys, API tokens) come from the environment or a secret store?",
+      "look_for": "application*.yml / properties, @Value and code constants holding credentials.",
+      "signals": [],
+      "source": "Spring Boot reference: Externalized Configuration; OWASP Secrets Management Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "CFG-03",
+      "category": "secrets_config",
+      "weight": 2,
+      "question": "Are actuator endpoints limited to what is needed and secured?",
+      "look_for": "management.endpoints.web.exposure.* and the authorization rules covering /actuator.",
+      "signals": [],
+      "source": "Spring Boot reference: Actuator, Endpoints > Security",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "HDR-01",
+      "category": "headers_actuator",
+      "weight": 1,
+      "question": "Are HSTS, X-Content-Type-Options and a frame protection header sent?",
+      "look_for": "headers() configuration, reverse proxy configuration.",
+      "signals": [],
+      "source": "OWASP HTTP Headers Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "HDR-02",
+      "category": "headers_actuator",
+      "weight": 1,
+      "question": "Is HTTPS enforced on all pages, directly or at a proxy?",
+      "look_for": "requiresChannel, server.ssl.*, proxy or ingress settings.",
+      "signals": [],
+      "source": "OWASP Transport Layer Security Cheat Sheet (Use TLS For All Pages)",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "INPUT-01",
+      "category": "data_logging",
+      "weight": 2,
+      "question": "Are request bodies validated on the server (@Valid with constraints)?",
+      "look_for": "@Valid / @Validated on controller parameters and constraints on the DTOs.",
+      "signals": [
+        "input_validation"
+      ],
+      "source": "OWASP Input Validation Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "INPUT-02",
+      "category": "data_logging",
+      "weight": 2,
+      "question": "Do error responses avoid stack traces and internal details?",
+      "look_for": "Global exception handlers, server.error.* properties, custom error bodies.",
+      "signals": [],
+      "source": "Spring Boot reference: Error Handling (server.error.include-stacktrace, default never)",
+      "status": "V",
+      "checked": "2026-11-16"
+    },
+    {
+      "id": "LOG-01",
+      "category": "data_logging",
+      "weight": 1,
+      "question": "Are authentication successes and failures and access-denied events logged?",
+      "look_for": "Event listeners (AuthenticationSuccessEvent, AuthorizationDeniedEvent), handlers and log statements in security code.",
+      "signals": [
+        "audit_events"
+      ],
+      "source": "OWASP Logging Cheat Sheet",
+      "status": "V",
+      "checked": "2026-11-16"
+    }
+  ]
+}

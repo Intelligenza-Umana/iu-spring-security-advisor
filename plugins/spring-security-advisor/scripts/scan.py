@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 from checks_more import CHECKS_MORE
+from scoring import ScoreError, compute_score, format_score_text, validate_answers
 from signals import collect_signals
 from core import (  # noqa: F401  (re-exported: the tests and other modules import these from scan)
     LIMITS,
@@ -317,6 +318,49 @@ def run_map(root: Path) -> dict:
     }
 
 
+CHECKLIST_FILE = RULES_FILE.parent.parent / "checklists" / "checklist.json"
+
+
+def load_checklist() -> dict:
+    try:
+        return json.loads(CHECKLIST_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ScanError(f"cannot read checklist file {CHECKLIST_FILE}: {exc}") from exc
+
+
+def _read_json(path: str, what: str):
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ScoreError(f"cannot read {what} {path}: {exc}") from exc
+
+
+def run_score(root: Path, answers_path: str, baseline_path: str | None = None, save: bool = False) -> dict:
+    report = run_scan(root)
+    checklist = load_checklist()
+    effective, warnings = validate_answers(_read_json(answers_path, "answers file"), checklist["items"], Path(report["root"]))
+    result = compute_score(report["findings"], effective, checklist, load_rules())
+    result["warnings"] = warnings
+    result["scanner"] = report["scanner"]
+    result["root"] = report["root"]
+    result["findings_count"] = len(report["findings"])
+    result["answers"] = {k: {"answer": v["answer"], "evidence": v["evidence"], "note": v["note"]} for k, v in effective.items()}
+    if baseline_path:
+        old = _read_json(baseline_path, "baseline")
+        if isinstance(old, dict) and old.get("total") is not None and result["total"] is not None:
+            deltas = {}
+            for cid, c in result["categories"].items():
+                before = (old.get("categories", {}).get(cid) or {}).get("score")
+                if before is not None and c["score"] is not None:
+                    deltas[cid] = c["score"] - before
+            result["delta"] = {"total": result["total"] - old["total"], "categories": deltas}
+    if save:
+        target = Path(report["root"]) / ".spring-security-advisor"
+        target.mkdir(exist_ok=True)
+        (target / "last-audit.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    return result
+
+
 def format_text(report: dict) -> str:
     lines = []
     scope = report["scope"]
@@ -349,9 +393,21 @@ def main(argv: list[str] | None = None) -> int:
     scan.add_argument("--fail-on", choices=list(SEVERITY_ORDER), help="exit 1 if a finding at or above this severity exists")
     mapping = sub.add_parser("map", help="inventory of security components")
     mapping.add_argument("path")
+    sub.add_parser("checklist", help="print the audit checklist")
+    score = sub.add_parser("score", help="score the project from findings and checklist answers")
+    score.add_argument("path")
+    score.add_argument("--answers", required=True, help="JSON file with the checklist answers")
+    score.add_argument("--baseline", help="a previous result saved with --save, to show the change")
+    score.add_argument("--save", action="store_true", help="write .spring-security-advisor/last-audit.json in the project")
+    score.add_argument("--format", choices=["json", "text"], default="json")
     args = parser.parse_args(argv)
     try:
-        if args.command == "scan":
+        if args.command == "checklist":
+            print(json.dumps(load_checklist(), indent=2, ensure_ascii=False))
+        elif args.command == "score":
+            result = run_score(Path(args.path), args.answers, args.baseline, args.save)
+            print(format_score_text(result) if args.format == "text" else json.dumps(result, indent=2))
+        elif args.command == "scan":
             report = run_scan(Path(args.path))
             print(format_text(report) if args.format == "text" else json.dumps(report, indent=2))
             if args.fail_on and any(SEVERITY_ORDER[f["severity"]] >= SEVERITY_ORDER[args.fail_on] for f in report["findings"]):

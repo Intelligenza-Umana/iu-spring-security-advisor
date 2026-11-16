@@ -1,0 +1,6 @@
+{"answers": [
+  {"id": "TOK-02", "answer": "partial", "evidence": ["src/main/java/demo/RefreshService.java:19"], "note": "old token is revoked and a new one issued"},
+  {"id": "TOK-05", "answer": "no", "note": "lookup then revoke with no lock, version or conditional update"},
+  {"id": "RATE-01", "answer": "no", "note": "no rate limiter found"},
+  {"id": "CFG-01", "answer": "no", "evidence": ["src/main/resources/application.yml:2"], "note": "literal jwt.secret in the config file"}
+]}
