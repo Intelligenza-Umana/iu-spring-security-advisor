@@ -17,7 +17,7 @@ If `$PY` is empty, no working Python 3 was found (on Windows `python3` is often 
 ## Steps
 
 1. Find the project root and run `$SCAN map <root>`.
-2. Build the map from the JSON and from reading the listed files:
+2. Build the map from the JSON and from reading the listed files. The `signals` section tells you which mechanisms exist and where (rate limiting, refresh tokens, locks, JWT validation, logout, audit events):
    - each `SecurityFilterChain` (file, `@Order`, stateless or not, CSRF on or off) and which requests it covers;
    - custom filters and where they are registered in the chain (`addFilterBefore`, `addFilterAfter`);
    - `AuthenticationManager`, `AuthenticationProvider`, `UserDetailsService`, `PasswordEncoder` beans that actually exist;

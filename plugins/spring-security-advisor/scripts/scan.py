@@ -19,173 +19,28 @@ import re
 import sys
 from pathlib import Path
 
-VERSION = "0.2.0"
-RULES_FILE = Path(__file__).resolve().parent.parent / "rules" / "rules.json"
-SKIP_DIRS = {".git", "target", "build", "node_modules", ".gradle", ".idea", ".mvn", "out"}
-SEVERITY_ORDER = {"low": 1, "medium": 2, "high": 3}
-LIMITS = [
-    "Rule-based pattern matching on source text, not a full Java parser.",
-    "Does not run the application, resolve dependencies or inspect the network.",
-    "Does not prove that a project is secure: absence of findings is not a security guarantee.",
-    "Rules were checked against the Spring Security 7.0 reference; older versions can differ.",
-]
+from checks_more import CHECKS_MORE
+from scoring import ScoreError, compute_score, format_score_text, validate_answers
+from signals import collect_signals
+from core import (  # noqa: F401  (re-exported: the tests and other modules import these from scan)
+    LIMITS,
+    RULES_FILE,
+    SEVERITY_ORDER,
+    SKIP_DIRS,
+    Project,
+    ScanError,
+    find_matching,
+    is_test_path,
+    line_of,
+    load_rules,
+    make_finding,
+    strip_comments,
+)
 
-
-class ScanError(Exception):
-    pass
-
-
-# --------------------------------------------------------------------------- helpers
-
-
-def load_rules() -> dict[str, dict]:
-    try:
-        rules = json.loads(RULES_FILE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ScanError(f"cannot read rules file {RULES_FILE}: {exc}") from exc
-    return {rule["id"]: rule for rule in rules}
-
-
-def strip_comments(text: str) -> str:
-    """Blank out // and /* */ comments, keeping strings, offsets and line numbers."""
-    out: list[str] = []
-    i, n = 0, len(text)
-    while i < n:
-        two = text[i : i + 2]
-        if text.startswith('"""', i):
-            end = text.find('"""', i + 3)
-            end = n if end == -1 else end + 3
-            out.append(text[i:end])
-            i = end
-        elif text[i] in "\"'":
-            quote = text[i]
-            j = i + 1
-            while j < n and text[j] != quote and text[j] != "\n":
-                j += 2 if text[j] == "\\" else 1
-            j = min(j + 1, n)
-            out.append(text[i:j])
-            i = j
-        elif two == "//":
-            j = text.find("\n", i)
-            j = n if j == -1 else j
-            out.append(" " * (j - i))
-            i = j
-        elif two == "/*":
-            j = text.find("*/", i + 2)
-            j = n if j == -1 else j + 2
-            out.append("".join(c if c == "\n" else " " for c in text[i:j]))
-            i = j
-        else:
-            out.append(text[i])
-            i += 1
-    return "".join(out)
-
-
-def find_matching(text: str, open_idx: int) -> int:
-    """Index of the parenthesis closing the one at open_idx (or end of text)."""
-    depth, i, n = 0, open_idx, len(text)
-    while i < n:
-        c = text[i]
-        if c in "\"'":
-            j = i + 1
-            while j < n and text[j] != c and text[j] != "\n":
-                j += 2 if text[j] == "\\" else 1
-            i = j
-        elif c == "(":
-            depth += 1
-        elif c == ")":
-            depth -= 1
-            if depth == 0:
-                return i
-        i += 1
-    return n
-
-
-def line_of(text: str, pos: int) -> int:
-    return text.count("\n", 0, pos) + 1
-
-
-def is_test_path(path: Path, root: Path) -> bool:
-    parts = path.relative_to(root).parts
-    return any(p in ("test", "tests", "it", "integrationTest") for p in parts[:-1]) or path.name.endswith(
-        ("Test.java", "Tests.java", "IT.java")
-    )
-
-
-class Project:
-    def __init__(self, root: Path):
-        if not root.is_dir():
-            raise ScanError(f"not a directory: {root}")
-        self.root = root.resolve()
-        self.java: list[tuple[Path, str]] = []  # (path, comment-free text), main code only
-        self.counts = {"java": 0, "java_test_skipped": 0, "config": 0, "build": 0}
-        self.boot_version: str | None = None
-        self._load()
-
-    def _load(self) -> None:
-        for path in sorted(self.root.rglob("*")):
-            if not path.is_file() or any(p in SKIP_DIRS for p in path.relative_to(self.root).parts):
-                continue
-            name = path.name
-            try:
-                if name.endswith(".java"):
-                    if is_test_path(path, self.root):
-                        self.counts["java_test_skipped"] += 1
-                        continue
-                    self.java.append((path, strip_comments(path.read_text(encoding="utf-8", errors="replace"))))
-                    self.counts["java"] += 1
-                elif name == "pom.xml" or name.startswith("build.gradle"):
-                    self.counts["build"] += 1
-                    self._read_build(path.read_text(encoding="utf-8", errors="replace"))
-                elif re.fullmatch(r"application.*\.(ya?ml|properties)", name):
-                    self.counts["config"] += 1
-            except OSError:
-                continue
-
-    def _read_build(self, text: str) -> None:
-        patterns = [
-            r"spring-boot-starter-parent\s*</artifactId>\s*<version>\s*([^<\s]+)",
-            r"org\.springframework\.boot['\"]\)?\s*version\s*['\"]([^'\"]+)",
-        ]
-        for pattern in patterns:
-            match = re.search(pattern, text)
-            if match and not self.boot_version:
-                self.boot_version = match.group(1)
-
-    def rel(self, path: Path) -> str:
-        return path.relative_to(self.root).as_posix()
-
-    def grep(self, pattern: str, skip_imports: bool = True):
-        """Yield (path, text, match, line) for each match in main Java code."""
-        regex = re.compile(pattern)
-        for path, text in self.java:
-            for match in regex.finditer(text):
-                line_start = text.rfind("\n", 0, match.start()) + 1
-                line_end = text.find("\n", match.start())
-                line_text = text[line_start : len(text) if line_end == -1 else line_end]
-                if skip_imports and line_text.lstrip().startswith(("import ", "package ")):
-                    continue
-                yield path, text, match, line_of(text, match.start())
+VERSION = "1.0.0"
 
 
 # --------------------------------------------------------------------------- checks
-
-
-def make_finding(rules, rule_id, project, path, line, detail, confidence="high", severity=None):
-    rule = rules[rule_id]
-    return {
-        "id": rule_id,
-        "severity": severity or rule["severity"],
-        "title": rule["title"],
-        "file": project.rel(path) if path else None,
-        "line": line,
-        "detail": detail,
-        "risk": rule["risk"],
-        "fix": rule["fix"],
-        "source": f'{rule["source"]} (checked {rule["checked"]})',
-        "type": rule["type"],
-        "confidence": confidence,
-    }
 
 
 def check_sec001(project, rules):
@@ -382,6 +237,8 @@ CHECKS = {
 
 # --------------------------------------------------------------------------- commands
 
+CHECKS.update(CHECKS_MORE)
+
 
 def run_scan(root: Path) -> dict:
     rules = load_rules()
@@ -408,6 +265,7 @@ def run_scan(root: Path) -> dict:
             "rules_run": list(CHECKS),
         },
         "findings": findings,
+        "signals": collect_signals(project),
         "notes": notes,
         "limits": LIMITS,
     }
@@ -446,6 +304,7 @@ def run_map(root: Path) -> dict:
         "filter_chains": chains,
         "custom_filters": filters,
         "filter_registrations": registrations,
+        "signals": collect_signals(project),
         "authentication_manager": where(r"\bAuthenticationManager\b[^;{]*"),
         "authentication_providers": where(r"\b(?:implements|extends)\s+[\w\s,<>]*\bAuthenticationProvider\b|\bDaoAuthenticationProvider\b"),
         "user_details_services": where(r"\bUserDetailsService\b[^;{]*"),
@@ -457,6 +316,49 @@ def run_map(root: Path) -> dict:
         "auth_rules": where(r"\.(?:requestMatchers|antMatchers|mvcMatchers|anyRequest)\s*\([^)]*\)\s*\.\s*\w+(?:\([^)]*\))?"),
         "limits": LIMITS,
     }
+
+
+CHECKLIST_FILE = RULES_FILE.parent.parent / "checklists" / "checklist.json"
+
+
+def load_checklist() -> dict:
+    try:
+        return json.loads(CHECKLIST_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ScanError(f"cannot read checklist file {CHECKLIST_FILE}: {exc}") from exc
+
+
+def _read_json(path: str, what: str):
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ScoreError(f"cannot read {what} {path}: {exc}") from exc
+
+
+def run_score(root: Path, answers_path: str, baseline_path: str | None = None, save: bool = False) -> dict:
+    report = run_scan(root)
+    checklist = load_checklist()
+    effective, warnings = validate_answers(_read_json(answers_path, "answers file"), checklist["items"], Path(report["root"]))
+    result = compute_score(report["findings"], effective, checklist, load_rules())
+    result["warnings"] = warnings
+    result["scanner"] = report["scanner"]
+    result["root"] = report["root"]
+    result["findings_count"] = len(report["findings"])
+    result["answers"] = {k: {"answer": v["answer"], "evidence": v["evidence"], "note": v["note"]} for k, v in effective.items()}
+    if baseline_path:
+        old = _read_json(baseline_path, "baseline")
+        if isinstance(old, dict) and old.get("total") is not None and result["total"] is not None:
+            deltas = {}
+            for cid, c in result["categories"].items():
+                before = (old.get("categories", {}).get(cid) or {}).get("score")
+                if before is not None and c["score"] is not None:
+                    deltas[cid] = c["score"] - before
+            result["delta"] = {"total": result["total"] - old["total"], "categories": deltas}
+    if save:
+        target = Path(report["root"]) / ".spring-security-advisor"
+        target.mkdir(exist_ok=True)
+        (target / "last-audit.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    return result
 
 
 def format_text(report: dict) -> str:
@@ -491,9 +393,21 @@ def main(argv: list[str] | None = None) -> int:
     scan.add_argument("--fail-on", choices=list(SEVERITY_ORDER), help="exit 1 if a finding at or above this severity exists")
     mapping = sub.add_parser("map", help="inventory of security components")
     mapping.add_argument("path")
+    sub.add_parser("checklist", help="print the audit checklist")
+    score = sub.add_parser("score", help="score the project from findings and checklist answers")
+    score.add_argument("path")
+    score.add_argument("--answers", required=True, help="JSON file with the checklist answers")
+    score.add_argument("--baseline", help="a previous result saved with --save, to show the change")
+    score.add_argument("--save", action="store_true", help="write .spring-security-advisor/last-audit.json in the project")
+    score.add_argument("--format", choices=["json", "text"], default="json")
     args = parser.parse_args(argv)
     try:
-        if args.command == "scan":
+        if args.command == "checklist":
+            print(json.dumps(load_checklist(), indent=2, ensure_ascii=False))
+        elif args.command == "score":
+            result = run_score(Path(args.path), args.answers, args.baseline, args.save)
+            print(format_score_text(result) if args.format == "text" else json.dumps(result, indent=2))
+        elif args.command == "scan":
             report = run_scan(Path(args.path))
             print(format_text(report) if args.format == "text" else json.dumps(report, indent=2))
             if args.fail_on and any(SEVERITY_ORDER[f["severity"]] >= SEVERITY_ORDER[args.fail_on] for f in report["findings"]):

@@ -8,7 +8,8 @@
     "fix": "Use an adaptive encoder. PasswordEncoderFactories.createDelegatingPasswordEncoder() encodes with bcrypt by default and supports password upgrades.",
     "source": "Spring Security 7.0 API reference: NoOpPasswordEncoder, PasswordEncoderFactories.createDelegatingPasswordEncoder()",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "passwords"
   },
   {
     "id": "SEC002",
@@ -19,7 +20,8 @@
     "fix": "Order rules from the most specific to the most general and end with anyRequest().",
     "source": "Spring Security 7.0 API reference: HttpSecurity.authorizeHttpRequests, 'Invalid Matcher Order Example'",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "authorization"
   },
   {
     "id": "SEC003",
@@ -30,7 +32,8 @@
     "fix": "Add @EnableMethodSecurity to a @Configuration class.",
     "source": "Spring Security 7.0 reference: Method Security",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "authorization"
   },
   {
     "id": "SEC004",
@@ -41,7 +44,8 @@
     "fix": "Replace it with @EnableMethodSecurity.",
     "source": "Spring Security 7.0 reference: Migrating from @EnableGlobalMethodSecurity",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "authorization"
   },
   {
     "id": "SEC005",
@@ -52,7 +56,8 @@
     "fix": "Keep the default. If the API is stateless and authenticates only with a token sent in a header, disabling CSRF can be reasonable: document that choice next to the call.",
     "source": "Spring Security 7.0 reference: Cross Site Request Forgery (CSRF), Disable CSRF Protection",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "session_csrf_cors"
   },
   {
     "id": "SEC006",
@@ -63,7 +68,8 @@
     "fix": "If the API is meant to be stateless, set sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).",
     "source": "Spring Security 7.0 reference: Session Management, SessionCreationPolicy.STATELESS (the token detection itself is a heuristic)",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "tokens"
   },
   {
     "id": "SEC007",
@@ -74,6 +80,199 @@
     "fix": "Generate a random key of at least the required size and load it from configuration or a secret store, not from a literal in the source.",
     "source": "RFC 7518 (JSON Web Algorithms) section 3.2, HMAC with SHA-2 Functions; Spring Security 7.0 reference: OAuth 2.0 Resource Server JWT, NimbusJwtDecoder.withSecretKey",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "tokens"
+  },
+  {
+    "id": "SEC008",
+    "title": "Secret written as a literal in a configuration file",
+    "severity": "high",
+    "type": "risk to evaluate",
+    "category": "secrets_config",
+    "risk": "Passwords, signing keys and tokens committed in application.properties or application.yml end up in version control, build artifacts and logs, and are shared by every environment that uses the file.",
+    "fix": "Read the value from an environment variable or a secret store: key: ${ENV_NAME}. Keep dev-only defaults out of files that reach production, and rotate any secret that was committed.",
+    "source": "Spring Boot reference: Externalized Configuration (property placeholders, binding from environment variables)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC009",
+    "title": "All actuator endpoints exposed over HTTP",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "headers_actuator",
+    "risk": "management.endpoints.web.exposure.include=* exposes every enabled actuator endpoint (for example env, beans, heapdump, loggers). Spring Boot exposes only health by default and says to make sure exposed endpoints hold no sensitive information or are secured.",
+    "fix": "List only the endpoints you need (for example health,info) and secure the rest with Spring Security or a firewall.",
+    "source": "Spring Boot reference: Actuator, Endpoints > Security and Exposing Endpoints (management.endpoints.web.exposure.include)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC010",
+    "title": "Stack traces always included in error responses",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "headers_actuator",
+    "risk": "Setting include-stacktrace to always returns the exception stack trace to every client, which leaks class names, library versions and internal paths.",
+    "fix": "Keep the default (never) in production; use on_param only for local debugging, and log the stack trace on the server instead.",
+    "source": "Spring Boot reference: Error Handling (server.error.* properties in Boot 3, spring.web.error.* in Boot 4); API: ErrorProperties.IncludeAttribute",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC011",
+    "title": "Session or custom cookie without Secure or HttpOnly",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "session_csrf_cors",
+    "risk": "A cookie without HttpOnly can be read by JavaScript (stolen through XSS); a cookie without Secure can be sent over plain HTTP.",
+    "fix": "Leave server.servlet.session.cookie.http-only and secure at true for the production profile, and set both flags on cookies you create.",
+    "source": "Spring Boot application properties: server.servlet.session.cookie.http-only and server.servlet.session.cookie.secure; Spring Boot API: org.springframework.boot.web.server.Cookie",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC012",
+    "title": "CORS allows any origin together with credentials",
+    "severity": "high",
+    "type": "risk to evaluate",
+    "category": "session_csrf_cors",
+    "risk": "Enabling credentials establishes a high level of trust with the configured origins and exposes user-specific data such as cookies and CSRF tokens. With a wildcard origin pattern, any site can make credentialed requests and read the response.",
+    "fix": "List the exact origins you trust (setAllowedOrigins with explicit https:// origins) and keep allowCredentials only where cookies or HTTP authentication are really needed.",
+    "source": "Spring Framework reference: Web MVC CORS, Credentialed Requests; Spring Security reference: CORS",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC013",
+    "title": "CORS allows any origin",
+    "severity": "low",
+    "type": "risk to evaluate",
+    "category": "session_csrf_cors",
+    "risk": "A wildcard origin lets any website call the API from a browser. Without credentials the exposure is smaller, but Spring recommends a finite set of values for a higher level of security.",
+    "fix": "Configure the specific origins of your front end, for example setAllowedOrigins(List.of(\"https://app.example.com\")).",
+    "source": "Spring Framework reference: Web MVC CORS, @CrossOrigin and Global Configuration",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC014",
+    "title": "Every request is permitted without authentication",
+    "severity": "high",
+    "type": "risk to evaluate",
+    "category": "authorization",
+    "risk": "anyRequest().permitAll() (or permitAll() on /**) turns authorization off for the whole chain. Spring Security documents anyRequest().authenticated() as the minimum rule for an HttpSecurity instance.",
+    "fix": "End the rules with anyRequest().authenticated() (or denyAll()) and permit only the specific public paths such as /login.",
+    "source": "Spring Security 7.0 reference: Authorize HttpServletRequests",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC015",
+    "title": "Security response headers disabled",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "headers_actuator",
+    "risk": "Disabling frame options lets the application be framed by any origin (clickjacking); disabling headers removes the other default protections too.",
+    "fix": "Keep the default headers; if one must change, adjust only that header (for example frameOptions sameOrigin for the H2 console in development).",
+    "source": "Spring Security 7.0 API: HeadersConfigurer.FrameOptionsConfig.disable(), HttpSecurity.headers",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC016",
+    "title": "JWT parsed without signature verification",
+    "severity": "high",
+    "type": "risk to evaluate",
+    "category": "tokens",
+    "risk": "parseUnsecuredClaims, parseUnsecuredContent, parseClaimsJwt and parser().unsecured() accept a JWT with no signature check (alg none). If the token comes from a client and is used to authenticate or authorize, anyone can forge claims. Reading the claims of an already-validated expired token is a known legitimate use, so check what the token is used for.",
+    "fix": "Parse client tokens with parseSignedClaims after verifyWith(key), or use Spring Security's JwtDecoder.",
+    "source": "JJWT API reference: JwtParser (parseSignedClaims, parseUnsecuredClaims) and JwtParserBuilder.unsecured()",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC017",
+    "title": "JWT created without an expiration claim",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "tokens",
+    "risk": "A token without exp is valid until the signing key changes, so a leaked token stays usable indefinitely. JJWT provides expiration() for the registered exp claim.",
+    "fix": "Set a short expiration on every token, for example .expiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000)) for an access token, and validate it when parsing.",
+    "source": "JJWT reference: JwtBuilder.expiration() and standard claims (RFC 7519 section 4.1.4)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC018",
+    "title": "Deprecated digest-based password encoder",
+    "severity": "high",
+    "type": "certain bug",
+    "category": "passwords",
+    "risk": "StandardPasswordEncoder, Md4PasswordEncoder, MessageDigestPasswordEncoder and LdapShaPasswordEncoder are deprecated: Spring documents digest-based password encoding as not secure and legacy-only.",
+    "fix": "Use an adaptive one-way function (BCrypt, Pbkdf2, SCrypt, Argon2); DelegatingPasswordEncoder also supports password upgrades.",
+    "source": "Spring Security 7.0 API reference: StandardPasswordEncoder, Md4PasswordEncoder, MessageDigestPasswordEncoder, LdapShaPasswordEncoder (Deprecated notes)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC019",
+    "title": "MD5 or SHA-1 digest in code that handles passwords",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "passwords",
+    "risk": "Plain digests such as MD5 and SHA-1 are fast and unsalted by default, so stolen hashes are cracked quickly. Spring says digest-based password encoding is not considered secure. The scanner only checks whether the file mentions passwords, so the digest may be used for something else.",
+    "fix": "If the digest protects passwords, replace it with an adaptive encoder (BCrypt, Pbkdf2, SCrypt, Argon2) through PasswordEncoder.",
+    "source": "Spring Security 7.0 reference: Password Storage; API: MessageDigestPasswordEncoder (Deprecated note)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC020",
+    "title": "BCrypt strength below the default",
+    "severity": "low",
+    "type": "improvement",
+    "category": "passwords",
+    "risk": "BCrypt is deliberately slow and Spring suggests tuning the strength so that verifying a password takes about 1 second. The default strength is 10; lower values make offline cracking cheaper.",
+    "fix": "Use the default (new BCryptPasswordEncoder()) or tune upward on your own hardware.",
+    "source": "Spring Security 7.0 reference: Password Storage, BCryptPasswordEncoder; API: BCryptPasswordEncoder (default strength 10)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC021",
+    "title": "Non-cryptographic random generator in secret-related code",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "tokens",
+    "risk": "java.util.Random, Math.random and ThreadLocalRandom are not cryptographically secure, so tokens, codes or identifiers built from them can be predicted. The scanner only checks that the class path looks secret-related.",
+    "fix": "Use java.security.SecureRandom (or a library key generator) for tokens, reset codes, one-time passwords and session identifiers.",
+    "source": "Java SE API: java.util.Random (not cryptographically secure; use SecureRandom), java.security.SecureRandom",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC022",
+    "title": "SQL built by concatenation instead of bind parameters",
+    "severity": "high",
+    "type": "risk to evaluate",
+    "category": "data_logging",
+    "risk": "When values are glued into the SQL text, a crafted value can change the query (SQL injection). The scanner only sees the concatenation; the value may be a constant or already validated.",
+    "fix": "Pass values as bind parameters: JdbcTemplate with ? placeholders, or named parameters (:name) with setParameter in JPA.",
+    "source": "Spring Framework reference: Data Access, JDBC core (JdbcTemplate queries with bind variables)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC023",
+    "title": "Refresh token revoked or replaced without a lock",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "tokens",
+    "risk": "When a refresh token is looked up and then revoked or replaced in separate steps, two concurrent requests with the same token can both pass the check and each obtain a new token pair, defeating single-use rotation. Spring Authorization Server rotates refresh tokens when reuse is disabled; a custom implementation must also make the check-and-revoke step atomic. The scanner only sees the lookup-then-update shape and the absence of lock signals.",
+    "fix": "Make check-and-revoke atomic: a pessimistic lock on the lookup (@Lock(LockModeType.PESSIMISTIC_WRITE)), an @Version column, or a conditional UPDATE ... WHERE revoked = false that you verify affected exactly one row.",
+    "source": "Spring Authorization Server: TokenSettings.reuseRefreshTokens and OAuth2RefreshTokenAuthenticationProvider (rotation); Spring Data JPA reference: Locking (@Lock)",
+    "status": "V",
+    "checked": "2026-11-16"
   }
 ]

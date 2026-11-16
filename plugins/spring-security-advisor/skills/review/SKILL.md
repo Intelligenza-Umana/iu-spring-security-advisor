@@ -5,7 +5,7 @@ description: Security code review for Spring Security (servlet stack). Runs a ru
 
 # review
 
-Read-only. This skill never edits the project.
+Read-only. This skill never edits the project. It is the fast check of the rules only, with no score; for the full picture with a 0-100 score, category scores and prioritized actions, use `/spring-security-advisor:audit`.
 
 ```
 PY=$(for c in python3 python py; do "$c" -c "import sys; sys.exit(sys.version_info[0] != 3)" 2>/dev/null && { echo "$c"; break; }; done)

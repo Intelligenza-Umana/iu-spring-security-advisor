@@ -1,0 +1,6 @@
+{"answers": [
+  {"id": "TOK-02", "answer": "yes", "evidence": ["src/main/java/demo/RefreshService.java:19"], "note": "old token revoked, new one issued"},
+  {"id": "TOK-05", "answer": "yes", "evidence": ["src/main/java/demo/RefreshTokenRepository.java:9"], "note": "pessimistic write lock on the lookup"},
+  {"id": "RATE-01", "answer": "yes", "evidence": ["src/main/java/demo/RateLimitFilter.java:7"], "note": "bucket-based filter"},
+  {"id": "CFG-01", "answer": "yes", "evidence": ["src/main/resources/application.yml:2"], "note": "secret read from JWT_SECRET"}
+]}
