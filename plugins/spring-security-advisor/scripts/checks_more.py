@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import re
 
-from core import make_finding
+from core import find_matching, line_of, make_finding
 
 SECRET_KEY = re.compile(r"secret|password|passwd|token|api-?key|private-?key|credential")
 NON_SECRET_SUFFIXES = (
@@ -83,10 +83,82 @@ def check_sec011(project, rules):
     for path, _text, match, line in project.grep(COOKIE_CODE):
         yield make_finding(rules, "SEC011", project, path, line, f"{match.group(0)} turns a cookie protection off.")
 
+# --------------------------------------------------------------------------- web rules
+
+WILDCARD_ORIGIN_CALL = re.compile(
+    r"\b(?:allowedOrigins|allowedOriginPatterns|addAllowedOrigin|addAllowedOriginPattern"
+    r"|setAllowedOrigins|setAllowedOriginPatterns)\s*\("
+)
+CREDENTIALS_TRUE = re.compile(r"\b(?:allowCredentials|setAllowCredentials)\s*\(\s*true\s*\)")
+CROSS_ORIGIN = re.compile(r"@CrossOrigin\b(?:\s*\(([^)]*)\))?")
+
+
+def check_sec012_013(project, rules):
+    """SEC012 (wildcard origin with credentials) and SEC013 (wildcard origin) share the detection."""
+    for path, text in project.java:
+        credentials = bool(CREDENTIALS_TRUE.search(text))
+        for call in WILDCARD_ORIGIN_CALL.finditer(text):
+            args = text[call.end() : find_matching(text, call.end() - 1)]
+            if not re.search(r'"\*"', args):
+                continue
+            line = line_of(text, call.start())
+            if credentials:
+                yield make_finding(
+                    rules, "SEC012", project, path, line,
+                    "A wildcard origin is allowed and credentials are enabled in the same file.",
+                )
+            else:
+                yield make_finding(rules, "SEC013", project, path, line, "A wildcard origin is allowed for CORS.")
+    for path, text, match, line in project.grep(CROSS_ORIGIN.pattern):
+        args = (match.group(1) or "").strip()
+        specific = bool(re.search(r"\b(?:origins|originPatterns|value)\s*=|^\s*\"", args)) and '"*"' not in args
+        if not specific:
+            yield make_finding(rules, "SEC013", project, path, line, "@CrossOrigin allows every origin.")
+
+
+def check_sec012(project, rules):
+    return (f for f in check_sec012_013(project, rules) if f["id"] == "SEC012")
+
+
+def check_sec013(project, rules):
+    return (f for f in check_sec012_013(project, rules) if f["id"] == "SEC013")
+
+
+CATCH_ALL_PERMIT = (
+    r"\.anyRequest\s*\(\s*\)\s*\.permitAll\s*\(\s*\)"
+    r'|\.(?:requestMatchers|antMatchers|mvcMatchers)\s*\(\s*"/\*\*"\s*\)\s*\.permitAll\s*\(\s*\)'
+)
+
+
+def check_sec014(project, rules):
+    for path, _text, match, line in project.grep(CATCH_ALL_PERMIT):
+        yield make_finding(rules, "SEC014", project, path, line, f"{' '.join(match.group(0).split())} permits every request without authentication.")
+
+
+HEADERS_DISABLED = (
+    r"\.headers\s*\(\s*(\w+)\s*->\s*\1\s*\.disable\s*\(\s*\)\s*\)"
+    r"|\.headers\s*\(\s*\)\s*\.disable\s*\(\s*\)"
+    r"|\.headers\s*\(\s*AbstractHttpConfigurer\s*::\s*disable\s*\)"
+    r"|\.frameOptions\s*\(\s*(\w+)\s*->\s*\2\s*\.disable\s*\(\s*\)\s*\)"
+    r"|\.frameOptions\s*\(\s*\)\s*\.disable\s*\(\s*\)"
+)
+
+
+def check_sec015(project, rules):
+    for path, _text, match, line in project.grep(HEADERS_DISABLED):
+        yield make_finding(
+            rules, "SEC015", project, path, line,
+            "Security response headers (or only X-Frame-Options) are disabled. This is sometimes needed for the H2 console in development.",
+        )
+
 
 CHECKS_MORE = {
     "SEC008": check_sec008,
     "SEC009": check_sec009,
     "SEC010": check_sec010,
     "SEC011": check_sec011,
+    "SEC012": check_sec012,
+    "SEC013": check_sec013,
+    "SEC014": check_sec014,
+    "SEC015": check_sec015,
 }

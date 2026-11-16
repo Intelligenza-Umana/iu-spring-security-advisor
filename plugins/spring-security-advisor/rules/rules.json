@@ -130,5 +130,53 @@
     "source": "Spring Boot application properties: server.servlet.session.cookie.http-only and server.servlet.session.cookie.secure; Spring Boot API: org.springframework.boot.web.server.Cookie",
     "status": "V",
     "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC012",
+    "title": "CORS allows any origin together with credentials",
+    "severity": "high",
+    "type": "risk to evaluate",
+    "category": "session_csrf_cors",
+    "risk": "Enabling credentials establishes a high level of trust with the configured origins and exposes user-specific data such as cookies and CSRF tokens. With a wildcard origin pattern, any site can make credentialed requests and read the response.",
+    "fix": "List the exact origins you trust (setAllowedOrigins with explicit https:// origins) and keep allowCredentials only where cookies or HTTP authentication are really needed.",
+    "source": "Spring Framework reference: Web MVC CORS, Credentialed Requests; Spring Security reference: CORS",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC013",
+    "title": "CORS allows any origin",
+    "severity": "low",
+    "type": "risk to evaluate",
+    "category": "session_csrf_cors",
+    "risk": "A wildcard origin lets any website call the API from a browser. Without credentials the exposure is smaller, but Spring recommends a finite set of values for a higher level of security.",
+    "fix": "Configure the specific origins of your front end, for example setAllowedOrigins(List.of(\"https://app.example.com\")).",
+    "source": "Spring Framework reference: Web MVC CORS, @CrossOrigin and Global Configuration",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC014",
+    "title": "Every request is permitted without authentication",
+    "severity": "high",
+    "type": "risk to evaluate",
+    "category": "authorization",
+    "risk": "anyRequest().permitAll() (or permitAll() on /**) turns authorization off for the whole chain. Spring Security documents anyRequest().authenticated() as the minimum rule for an HttpSecurity instance.",
+    "fix": "End the rules with anyRequest().authenticated() (or denyAll()) and permit only the specific public paths such as /login.",
+    "source": "Spring Security 7.0 reference: Authorize HttpServletRequests",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC015",
+    "title": "Security response headers disabled",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "headers_actuator",
+    "risk": "Disabling frame options lets the application be framed by any origin (clickjacking); disabling headers removes the other default protections too.",
+    "fix": "Keep the default headers; if one must change, adjust only that header (for example frameOptions sameOrigin for the H2 console in development).",
+    "source": "Spring Security 7.0 API: HeadersConfigurer.FrameOptionsConfig.disable(), HttpSecurity.headers",
+    "status": "V",
+    "checked": "2026-11-16"
   }
 ]
