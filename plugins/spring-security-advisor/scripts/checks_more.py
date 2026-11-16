@@ -217,6 +217,56 @@ def check_sec021(project, rules):
             )
 
 
+# --------------------------------------------------------------------------- data
+
+SQL_CALL = re.compile(
+    r"\.(?:createNativeQuery|createQuery|query|queryForObject|queryForList|queryForMap|queryForRowSet"
+    r"|update|batchUpdate|execute|executeQuery|executeUpdate)\s*\("
+)
+SQL_KEYWORD = re.compile(r"(?i)\b(?:select|insert|update|delete|from|where|call)\b")
+STRING_LITERAL = re.compile(r'"(?:[^"\\\n]|\\.)*"')
+
+
+def _first_argument(args: str) -> str:
+    depth, i = 0, 0
+    while i < len(args):
+        c = args[i]
+        if c == '"':
+            i += 1
+            while i < len(args) and args[i] != '"':
+                i += 2 if args[i] == "\\" else 1
+        elif c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        elif c == "," and depth == 0:
+            return args[:i]
+        i += 1
+    return args
+
+
+def _is_dynamic_sql(first: str) -> bool:
+    literals = STRING_LITERAL.findall(first)
+    if not literals or not any(SQL_KEYWORD.search(lit) for lit in literals):
+        return False
+    rest = STRING_LITERAL.sub('""', first)
+    if re.match(r"\s*String\s*\.\s*format\s*\(", rest) or ".formatted(" in rest:
+        return True
+    return "+" in rest and bool(re.search(r"[A-Za-z_]", rest.replace("String", "")))
+
+
+def check_sec022(project, rules):
+    for path, text in project.java:
+        for call in SQL_CALL.finditer(text):
+            args = text[call.end() : find_matching(text, call.end() - 1)]
+            if _is_dynamic_sql(_first_argument(args)):
+                yield make_finding(
+                    rules, "SEC022", project, path, line_of(text, call.start()),
+                    "The SQL text is built with string concatenation or formatting instead of bind parameters.",
+                    confidence="medium",
+                )
+
+
 CHECKS_MORE = {
     "SEC008": check_sec008,
     "SEC009": check_sec009,
@@ -232,4 +282,5 @@ CHECKS_MORE = {
     "SEC019": check_sec019,
     "SEC020": check_sec020,
     "SEC021": check_sec021,
+    "SEC022": check_sec022,
 }

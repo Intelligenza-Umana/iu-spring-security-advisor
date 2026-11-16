@@ -250,5 +250,17 @@
     "source": "Java SE API: java.util.Random (not cryptographically secure; use SecureRandom), java.security.SecureRandom",
     "status": "V",
     "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC022",
+    "title": "SQL built by concatenation instead of bind parameters",
+    "severity": "high",
+    "type": "risk to evaluate",
+    "category": "data_logging",
+    "risk": "When values are glued into the SQL text, a crafted value can change the query (SQL injection). The scanner only sees the concatenation; the value may be a constant or already validated.",
+    "fix": "Pass values as bind parameters: JdbcTemplate with ? placeholders, or named parameters (:name) with setParameter in JPA.",
+    "source": "Spring Framework reference: Data Access, JDBC core (JdbcTemplate queries with bind variables)",
+    "status": "V",
+    "checked": "2026-11-16"
   }
 ]
