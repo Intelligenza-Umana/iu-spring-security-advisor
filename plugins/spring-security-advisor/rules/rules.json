@@ -178,5 +178,77 @@
     "source": "Spring Security 7.0 API: HeadersConfigurer.FrameOptionsConfig.disable(), HttpSecurity.headers",
     "status": "V",
     "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC016",
+    "title": "JWT parsed without signature verification",
+    "severity": "high",
+    "type": "risk to evaluate",
+    "category": "tokens",
+    "risk": "parseUnsecuredClaims, parseUnsecuredContent, parseClaimsJwt and parser().unsecured() accept a JWT with no signature check (alg none). If the token comes from a client and is used to authenticate or authorize, anyone can forge claims. Reading the claims of an already-validated expired token is a known legitimate use, so check what the token is used for.",
+    "fix": "Parse client tokens with parseSignedClaims after verifyWith(key), or use Spring Security's JwtDecoder.",
+    "source": "JJWT API reference: JwtParser (parseSignedClaims, parseUnsecuredClaims) and JwtParserBuilder.unsecured()",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC017",
+    "title": "JWT created without an expiration claim",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "tokens",
+    "risk": "A token without exp is valid until the signing key changes, so a leaked token stays usable indefinitely. JJWT provides expiration() for the registered exp claim.",
+    "fix": "Set a short expiration on every token, for example .expiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000)) for an access token, and validate it when parsing.",
+    "source": "JJWT reference: JwtBuilder.expiration() and standard claims (RFC 7519 section 4.1.4)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC018",
+    "title": "Deprecated digest-based password encoder",
+    "severity": "high",
+    "type": "certain bug",
+    "category": "passwords",
+    "risk": "StandardPasswordEncoder, Md4PasswordEncoder, MessageDigestPasswordEncoder and LdapShaPasswordEncoder are deprecated: Spring documents digest-based password encoding as not secure and legacy-only.",
+    "fix": "Use an adaptive one-way function (BCrypt, Pbkdf2, SCrypt, Argon2); DelegatingPasswordEncoder also supports password upgrades.",
+    "source": "Spring Security 7.0 API reference: StandardPasswordEncoder, Md4PasswordEncoder, MessageDigestPasswordEncoder, LdapShaPasswordEncoder (Deprecated notes)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC019",
+    "title": "MD5 or SHA-1 digest in code that handles passwords",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "passwords",
+    "risk": "Plain digests such as MD5 and SHA-1 are fast and unsalted by default, so stolen hashes are cracked quickly. Spring says digest-based password encoding is not considered secure. The scanner only checks whether the file mentions passwords, so the digest may be used for something else.",
+    "fix": "If the digest protects passwords, replace it with an adaptive encoder (BCrypt, Pbkdf2, SCrypt, Argon2) through PasswordEncoder.",
+    "source": "Spring Security 7.0 reference: Password Storage; API: MessageDigestPasswordEncoder (Deprecated note)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC020",
+    "title": "BCrypt strength below the default",
+    "severity": "low",
+    "type": "improvement",
+    "category": "passwords",
+    "risk": "BCrypt is deliberately slow and Spring suggests tuning the strength so that verifying a password takes about 1 second. The default strength is 10; lower values make offline cracking cheaper.",
+    "fix": "Use the default (new BCryptPasswordEncoder()) or tune upward on your own hardware.",
+    "source": "Spring Security 7.0 reference: Password Storage, BCryptPasswordEncoder; API: BCryptPasswordEncoder (default strength 10)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC021",
+    "title": "Non-cryptographic random generator in secret-related code",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "tokens",
+    "risk": "java.util.Random, Math.random and ThreadLocalRandom are not cryptographically secure, so tokens, codes or identifiers built from them can be predicted. The scanner only checks that the class path looks secret-related.",
+    "fix": "Use java.security.SecureRandom (or a library key generator) for tokens, reset codes, one-time passwords and session identifiers.",
+    "source": "Java SE API: java.util.Random (not cryptographically secure; use SecureRandom), java.security.SecureRandom",
+    "status": "V",
+    "checked": "2026-11-16"
   }
 ]

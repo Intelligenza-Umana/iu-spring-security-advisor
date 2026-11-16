@@ -152,6 +152,71 @@ def check_sec015(project, rules):
         )
 
 
+# --------------------------------------------------------------------------- tokens and passwords
+
+UNSECURED_JWT = r"\.(?:parseClaimsJwt|parseUnsecuredClaims|parseUnsecuredContent|unsecured)\s*\("
+
+
+def check_sec016(project, rules):
+    for path, _text, match, line in project.grep(UNSECURED_JWT):
+        name = match.group(0).strip(" .(")
+        yield make_finding(rules, "SEC016", project, path, line, f"{name}() accepts a JWT without verifying a signature.")
+
+
+def check_sec017(project, rules):
+    for path, text in project.java:
+        builder = re.search(r"\bJwts\s*\.\s*builder\s*\(", text)
+        if builder and not re.search(r"\.(?:expiration|setExpiration)\s*\(", text):
+            yield make_finding(
+                rules, "SEC017", project, path, line_of(text, builder.start()),
+                "Jwts.builder() is used and no expiration claim is set anywhere in this file.",
+                confidence="medium",
+            )
+
+
+DEPRECATED_ENCODER = r"\bnew\s+(?:StandardPasswordEncoder|Md4PasswordEncoder|MessageDigestPasswordEncoder|LdapShaPasswordEncoder)\s*\("
+
+
+def check_sec018(project, rules):
+    for path, _text, match, line in project.grep(DEPRECATED_ENCODER):
+        name = match.group(0).replace("new", "").strip(" (")
+        yield make_finding(rules, "SEC018", project, path, line, f"{name} is a deprecated digest-based encoder.")
+
+
+WEAK_DIGEST = r'MessageDigest\s*\.\s*getInstance\(\s*"(?:MD5|SHA-?1|MD2)"\s*\)'
+
+
+def check_sec019(project, rules):
+    for path, text, match, line in project.grep(WEAK_DIGEST):
+        if "password" in text.lower():
+            yield make_finding(
+                rules, "SEC019", project, path, line,
+                "A weak digest (MD5/SHA-1) is used in a file that handles passwords.", confidence="medium",
+            )
+
+
+def check_sec020(project, rules):
+    for path, text, match, line in project.grep(r"\bnew\s+BCryptPasswordEncoder\s*\(([^)]*)\)"):
+        parts = [p.strip() for p in match.group(1).split(",")]
+        cost = next((int(p) for p in parts if p.isdigit()), None)
+        if cost is not None and cost < 10:
+            yield make_finding(rules, "SEC020", project, path, line, f"BCryptPasswordEncoder strength {cost} is below the default of 10.")
+
+
+SECRET_RELATED_PATH = re.compile(r"token|otp|reset|secret|session|password|verification")
+INSECURE_RANDOM = r"\bnew\s+Random\s*\(|\bMath\s*\.\s*random\s*\(|\bThreadLocalRandom\b"
+
+
+def check_sec021(project, rules):
+    for path, _text, match, line in project.grep(INSECURE_RANDOM):
+        if SECRET_RELATED_PATH.search(project.rel(path).lower()):
+            yield make_finding(
+                rules, "SEC021", project, path, line,
+                f"{match.group(0).strip()} is not cryptographically secure and this class looks secret-related.",
+                confidence="medium",
+            )
+
+
 CHECKS_MORE = {
     "SEC008": check_sec008,
     "SEC009": check_sec009,
@@ -161,4 +226,10 @@ CHECKS_MORE = {
     "SEC013": check_sec013,
     "SEC014": check_sec014,
     "SEC015": check_sec015,
+    "SEC016": check_sec016,
+    "SEC017": check_sec017,
+    "SEC018": check_sec018,
+    "SEC019": check_sec019,
+    "SEC020": check_sec020,
+    "SEC021": check_sec021,
 }
