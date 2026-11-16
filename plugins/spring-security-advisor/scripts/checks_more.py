@@ -7,6 +7,7 @@ from __future__ import annotations
 import re
 
 from core import find_matching, line_of, make_finding
+from signals import PATTERNS
 
 SECRET_KEY = re.compile(r"secret|password|passwd|token|api-?key|private-?key|credential")
 NON_SECRET_SUFFIXES = (
@@ -267,6 +268,31 @@ def check_sec022(project, rules):
                 )
 
 
+# --------------------------------------------------------------------------- refresh tokens
+
+REFRESH_RE = re.compile(PATTERNS["refresh_token"])
+LOCKING_RE = re.compile(PATTERNS["locking"])
+LOOKUP_THEN_REVOKE = re.compile(
+    r"\.(?:find|get|load|read)\w*\s*\(.*?\.(?:save|saveAndFlush|delete\w*|revoke\w*|setRevoked|remove\w*)\s*\(",
+    re.S,
+)
+
+
+def check_sec024(project, rules):
+    refresh_files = [(path, text) for path, text in project.java if REFRESH_RE.search(text)]
+    if not refresh_files or any(LOCKING_RE.search(text) for _path, text in refresh_files):
+        return
+    for path, text in refresh_files:
+        match = LOOKUP_THEN_REVOKE.search(text)
+        if match:
+            yield make_finding(
+                rules, "SEC024", project, path, line_of(text, match.start()),
+                "A refresh token is looked up and then revoked or replaced, and no lock, version column or "
+                "atomic update was found on the refresh path: two concurrent requests could both succeed.",
+                confidence="medium",
+            )
+
+
 CHECKS_MORE = {
     "SEC008": check_sec008,
     "SEC009": check_sec009,
@@ -283,4 +309,5 @@ CHECKS_MORE = {
     "SEC020": check_sec020,
     "SEC021": check_sec021,
     "SEC022": check_sec022,
+    "SEC024": check_sec024,
 }

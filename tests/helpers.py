@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+FIXTURES_DIR = ROOT / "tests" / "fixtures"
 SCRIPTS = ROOT / "plugins" / "spring-security-advisor" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import scan  # noqa: E402

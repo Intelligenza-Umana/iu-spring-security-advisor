@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 from checks_more import CHECKS_MORE
+from signals import collect_signals
 from core import (  # noqa: F401  (re-exported: the tests and other modules import these from scan)
     LIMITS,
     RULES_FILE,
@@ -263,6 +264,7 @@ def run_scan(root: Path) -> dict:
             "rules_run": list(CHECKS),
         },
         "findings": findings,
+        "signals": collect_signals(project),
         "notes": notes,
         "limits": LIMITS,
     }
@@ -301,6 +303,7 @@ def run_map(root: Path) -> dict:
         "filter_chains": chains,
         "custom_filters": filters,
         "filter_registrations": registrations,
+        "signals": collect_signals(project),
         "authentication_manager": where(r"\bAuthenticationManager\b[^;{]*"),
         "authentication_providers": where(r"\b(?:implements|extends)\s+[\w\s,<>]*\bAuthenticationProvider\b|\bDaoAuthenticationProvider\b"),
         "user_details_services": where(r"\bUserDetailsService\b[^;{]*"),

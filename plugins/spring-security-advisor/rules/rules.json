@@ -262,5 +262,17 @@
     "source": "Spring Framework reference: Data Access, JDBC core (JdbcTemplate queries with bind variables)",
     "status": "V",
     "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC024",
+    "title": "Refresh token revoked or replaced without a lock",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "tokens",
+    "risk": "When a refresh token is looked up and then revoked or replaced in separate steps, two concurrent requests with the same token can both pass the check and each obtain a new token pair, defeating single-use rotation. Spring Authorization Server rotates refresh tokens when reuse is disabled; a custom implementation must also make the check-and-revoke step atomic. The scanner only sees the lookup-then-update shape and the absence of lock signals.",
+    "fix": "Make check-and-revoke atomic: a pessimistic lock on the lookup (@Lock(LockModeType.PESSIMISTIC_WRITE)), an @Version column, or a conditional UPDATE ... WHERE revoked = false that you verify affected exactly one row.",
+    "source": "Spring Authorization Server: TokenSettings.reuseRefreshTokens and OAuth2RefreshTokenAuthenticationProvider (rotation); Spring Data JPA reference: Locking (@Lock)",
+    "status": "V",
+    "checked": "2026-11-16"
   }
 ]
