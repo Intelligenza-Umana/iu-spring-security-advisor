@@ -216,7 +216,8 @@ class Cli(unittest.TestCase):
         out = self.run_cli("score", str(FIXTURES_DIR / "refresh-race"), "--answers", self.answers("refresh-race.json"),
                            "--format", "text").stdout
         self.assertIn("provisional", out.lower())
-        self.assertRegex(out, r"Grade: [A-F]")
+        self.assertRegex(out, r"Grade: [A-F] \(provisional\)")
+        self.assertRegex(out, r"Security score: \d+/100 \(provisional\)")
 
     def test_baseline_and_save(self):
         with tempfile.TemporaryDirectory() as tmp:

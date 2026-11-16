@@ -201,10 +201,11 @@ def compute_score(findings: list[dict], effective: dict[str, dict], checklist: d
 def format_score_text(result: dict) -> str:
     lines = []
     total = result["total"]
-    head = "no score (nothing could be assessed)" if total is None else f"{total}/100"
+    tag = " (provisional)" if result["provisional"] else ""
+    head = "no score (nothing could be assessed)" if total is None else f"{total}/100{tag}"
     lines.append(f"Security score: {head}")
     if result["grade"]:
-        lines.append(f"Grade: {result['grade']}")
+        lines.append(f"Grade: {result['grade']}{tag}")
     note = "provisional: less than 70% of the applicable checklist could be assessed" if result["provisional"] else "coverage is sufficient"
     lines.append(f"Coverage: {int(result['coverage'] * 100)}% ({note})")
     for cap in result["caps_applied"]:
