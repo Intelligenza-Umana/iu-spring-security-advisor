@@ -128,6 +128,12 @@ class Catalogue(unittest.TestCase):
             self.assertTrue(rule["source"], rule["id"])
             self.assertIn(rule["status"], {"V", "D"}, rule["id"])
 
+    def test_every_rule_has_known_category(self):
+        known = {"authentication", "tokens", "authorization", "session_csrf_cors", "passwords",
+                 "rate_limiting", "secrets_config", "headers_actuator", "data_logging"}
+        for rule in json.loads(RULES.read_text()):
+            self.assertIn(rule.get("category"), known, rule["id"])
+
     def test_unverified_rules_are_not_released(self):
         # Release rule from the spec: a rule is not shipped until its source is verified.
         for rule in json.loads(RULES.read_text()):

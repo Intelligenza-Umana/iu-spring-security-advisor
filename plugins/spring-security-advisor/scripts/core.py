@@ -5,6 +5,8 @@ import json
 import re
 from pathlib import Path
 
+from config_reader import read_config
+
 RULES_FILE = Path(__file__).resolve().parent.parent / "rules" / "rules.json"
 SKIP_DIRS = {".git", "target", "build", "node_modules", ".gradle", ".idea", ".mvn", "out"}
 SEVERITY_ORDER = {"low": 1, "medium": 2, "high": 3}
@@ -103,6 +105,7 @@ class Project:
             raise ScanError(f"not a directory: {root}")
         self.root = root.resolve()
         self.java: list[tuple[Path, str]] = []  # (path, comment-free text), main code only
+        self.config: list[tuple[Path, dict[str, tuple[str, int]]]] = []  # main config files only
         self.counts = {"java": 0, "java_test_skipped": 0, "config": 0, "build": 0}
         self.boot_version: str | None = None
         self._load()
@@ -124,6 +127,8 @@ class Project:
                     self._read_build(path.read_text(encoding="utf-8", errors="replace"))
                 elif re.fullmatch(r"application.*\.(ya?ml|properties)", name):
                     self.counts["config"] += 1
+                    if not is_test_path(path, self.root):
+                        self.config.append((path, read_config(path)))
             except OSError:
                 continue
 
@@ -168,5 +173,6 @@ def make_finding(rules, rule_id, project, path, line, detail, confidence="high",
         "source": f'{rule["source"]} (checked {rule["checked"]})',
         "type": rule["type"],
         "confidence": confidence,
+        "category": rule.get("category"),
     }
 

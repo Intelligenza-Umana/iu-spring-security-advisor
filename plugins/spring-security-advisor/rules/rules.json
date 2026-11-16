@@ -8,7 +8,8 @@
     "fix": "Use an adaptive encoder. PasswordEncoderFactories.createDelegatingPasswordEncoder() encodes with bcrypt by default and supports password upgrades.",
     "source": "Spring Security 7.0 API reference: NoOpPasswordEncoder, PasswordEncoderFactories.createDelegatingPasswordEncoder()",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "passwords"
   },
   {
     "id": "SEC002",
@@ -19,7 +20,8 @@
     "fix": "Order rules from the most specific to the most general and end with anyRequest().",
     "source": "Spring Security 7.0 API reference: HttpSecurity.authorizeHttpRequests, 'Invalid Matcher Order Example'",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "authorization"
   },
   {
     "id": "SEC003",
@@ -30,7 +32,8 @@
     "fix": "Add @EnableMethodSecurity to a @Configuration class.",
     "source": "Spring Security 7.0 reference: Method Security",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "authorization"
   },
   {
     "id": "SEC004",
@@ -41,7 +44,8 @@
     "fix": "Replace it with @EnableMethodSecurity.",
     "source": "Spring Security 7.0 reference: Migrating from @EnableGlobalMethodSecurity",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "authorization"
   },
   {
     "id": "SEC005",
@@ -52,7 +56,8 @@
     "fix": "Keep the default. If the API is stateless and authenticates only with a token sent in a header, disabling CSRF can be reasonable: document that choice next to the call.",
     "source": "Spring Security 7.0 reference: Cross Site Request Forgery (CSRF), Disable CSRF Protection",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "session_csrf_cors"
   },
   {
     "id": "SEC006",
@@ -63,7 +68,8 @@
     "fix": "If the API is meant to be stateless, set sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).",
     "source": "Spring Security 7.0 reference: Session Management, SessionCreationPolicy.STATELESS (the token detection itself is a heuristic)",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "tokens"
   },
   {
     "id": "SEC007",
@@ -74,6 +80,55 @@
     "fix": "Generate a random key of at least the required size and load it from configuration or a secret store, not from a literal in the source.",
     "source": "RFC 7518 (JSON Web Algorithms) section 3.2, HMAC with SHA-2 Functions; Spring Security 7.0 reference: OAuth 2.0 Resource Server JWT, NimbusJwtDecoder.withSecretKey",
     "status": "V",
-    "checked": "2026-11-04"
+    "checked": "2026-11-04",
+    "category": "tokens"
+  },
+  {
+    "id": "SEC008",
+    "title": "Secret written as a literal in a configuration file",
+    "severity": "high",
+    "type": "risk to evaluate",
+    "category": "secrets_config",
+    "risk": "Passwords, signing keys and tokens committed in application.properties or application.yml end up in version control, build artifacts and logs, and are shared by every environment that uses the file.",
+    "fix": "Read the value from an environment variable or a secret store: key: ${ENV_NAME}. Keep dev-only defaults out of files that reach production, and rotate any secret that was committed.",
+    "source": "Spring Boot reference: Externalized Configuration (property placeholders, binding from environment variables)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC009",
+    "title": "All actuator endpoints exposed over HTTP",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "headers_actuator",
+    "risk": "management.endpoints.web.exposure.include=* exposes every enabled actuator endpoint (for example env, beans, heapdump, loggers). Spring Boot exposes only health by default and says to make sure exposed endpoints hold no sensitive information or are secured.",
+    "fix": "List only the endpoints you need (for example health,info) and secure the rest with Spring Security or a firewall.",
+    "source": "Spring Boot reference: Actuator, Endpoints > Security and Exposing Endpoints (management.endpoints.web.exposure.include)",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC010",
+    "title": "Stack traces always included in error responses",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "headers_actuator",
+    "risk": "Setting include-stacktrace to always returns the exception stack trace to every client, which leaks class names, library versions and internal paths.",
+    "fix": "Keep the default (never) in production; use on_param only for local debugging, and log the stack trace on the server instead.",
+    "source": "Spring Boot reference: Error Handling (server.error.* properties in Boot 3, spring.web.error.* in Boot 4); API: ErrorProperties.IncludeAttribute",
+    "status": "V",
+    "checked": "2026-11-16"
+  },
+  {
+    "id": "SEC011",
+    "title": "Session or custom cookie without Secure or HttpOnly",
+    "severity": "medium",
+    "type": "risk to evaluate",
+    "category": "session_csrf_cors",
+    "risk": "A cookie without HttpOnly can be read by JavaScript (stolen through XSS); a cookie without Secure can be sent over plain HTTP.",
+    "fix": "Leave server.servlet.session.cookie.http-only and secure at true for the production profile, and set both flags on cookies you create.",
+    "source": "Spring Boot application properties: server.servlet.session.cookie.http-only and server.servlet.session.cookie.secure; Spring Boot API: org.springframework.boot.web.server.Cookie",
+    "status": "V",
+    "checked": "2026-11-16"
   }
 ]

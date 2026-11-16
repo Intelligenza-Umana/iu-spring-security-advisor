@@ -19,6 +19,7 @@ import re
 import sys
 from pathlib import Path
 
+from checks_more import CHECKS_MORE
 from core import (  # noqa: F401  (re-exported: the tests and other modules import these from scan)
     LIMITS,
     RULES_FILE,
@@ -233,6 +234,8 @@ CHECKS = {
 
 
 # --------------------------------------------------------------------------- commands
+
+CHECKS.update(CHECKS_MORE)
 
 
 def run_scan(root: Path) -> dict:
