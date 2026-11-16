@@ -6,8 +6,8 @@ NAMES = {"rate_limiting", "login_throttling", "refresh_token", "token_revocation
          "jwt_validation", "password_reset", "input_validation", "logout", "audit_events"}
 
 
-def sec024(path):
-    return [f for f in scan.run_scan(path)["findings"] if f["id"] == "SEC024"]
+def sec023(path):
+    return [f for f in scan.run_scan(path)["findings"] if f["id"] == "SEC023"]
 
 
 class Signals(unittest.TestCase):
@@ -48,7 +48,7 @@ class Signals(unittest.TestCase):
 
 class Sec024(unittest.TestCase):
     def test_fires_on_the_race_fixture_at_the_lookup(self):
-        found = sec024(FIXTURES_DIR / "refresh-race")
+        found = sec023(FIXTURES_DIR / "refresh-race")
         self.assertEqual(len(found), 1)
         self.assertEqual(found[0]["file"], "src/main/java/demo/RefreshService.java")
         self.assertEqual(found[0]["line"], 15)
@@ -56,11 +56,11 @@ class Sec024(unittest.TestCase):
                          ("medium", "medium", "tokens"))
 
     def test_silent_when_a_lock_exists_on_the_refresh_path(self):
-        self.assertEqual(sec024(FIXTURES_DIR / "refresh-safe"), [])
+        self.assertEqual(sec023(FIXTURES_DIR / "refresh-safe"), [])
 
     def test_silent_without_refresh_token_signal(self):
         code = "class S { void f() { var x = repo.findByName(n); repo.save(x); } }"
-        findings = [f for f in __import__("helpers").scan_files({"src/main/java/S.java": code}) if f["id"] == "SEC024"]
+        findings = [f for f in __import__("helpers").scan_files({"src/main/java/S.java": code}) if f["id"] == "SEC023"]
         self.assertEqual(findings, [])
 
 

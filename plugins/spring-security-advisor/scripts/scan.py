@@ -37,7 +37,7 @@ from core import (  # noqa: F401  (re-exported: the tests and other modules impo
     strip_comments,
 )
 
-VERSION = "0.2.0"
+VERSION = "1.0.0"
 
 
 # --------------------------------------------------------------------------- checks

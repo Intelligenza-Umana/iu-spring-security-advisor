@@ -264,7 +264,7 @@
     "checked": "2026-11-16"
   },
   {
-    "id": "SEC024",
+    "id": "SEC023",
     "title": "Refresh token revoked or replaced without a lock",
     "severity": "medium",
     "type": "risk to evaluate",

@@ -1,8 +1,19 @@
 {
   "name": "spring-security-advisor",
-  "version": "0.2.0",
-  "description": "Spring Security review and map for Claude Code: a rule-based scanner finds known configuration mistakes, the skills explain each risk with an official source. Servlet stack, Python standard library only.",
-  "author": { "name": "Fabio Zagaria" },
+  "version": "1.0.0",
+  "description": "Security audit for Spring Boot projects: a rule scanner, a guided checklist and a deterministic 0-100 score with prioritized actions. Servlet stack, Python standard library only.",
+  "author": {
+    "name": "Fabio Zagaria"
+  },
   "license": "MIT",
-  "keywords": ["spring", "spring-security", "java", "security", "code-review", "jwt"]
+  "keywords": [
+    "audit",
+    "code-review",
+    "java",
+    "jwt",
+    "security",
+    "security-score",
+    "spring",
+    "spring-security"
+  ]
 }

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0
+- `audit` skill and `scan.py score`: a deterministic 0-100 score with a grade, per-category scores, coverage, caps and the top actions. The model answers a checklist with `file:line` evidence; the script validates the evidence and computes the score.
+- 16 new rules (SEC008 to SEC023), 23 in total: secrets in configuration files, actuator exposure, stack traces, cookie flags, CORS, catch-all `permitAll`, disabled headers, unsigned JWT parsing, JWT without expiration, deprecated or weak password encoders, BCrypt cost, insecure randomness, SQL by concatenation, refresh token revoked without a lock.
+- Scanner signals: which mechanisms exist and where (rate limiting, refresh tokens, locking, JWT validation, logout, audit events). `scan` and `map` print them.
+- Checklist of 31 items in 9 categories, each with a verified source.
+- Config reader for `application*.properties` and `application*.yml` (no dependencies).
+- Findings carry a `category`. `review` stays as the fast rules-only check; `map` includes the signals.
+- Stable from this version: the JSON output of `scan`, `map`, `checklist` and `score`.
+
 ## 0.2.0
 - Rule SEC007: HMAC JWT signing key built from a string literal shorter than the algorithm minimum (RFC 7518 section 3.2).
 - README: example output and a Windows note about Python.

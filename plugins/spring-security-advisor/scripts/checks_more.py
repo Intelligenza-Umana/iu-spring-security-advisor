@@ -278,7 +278,7 @@ LOOKUP_THEN_REVOKE = re.compile(
 )
 
 
-def check_sec024(project, rules):
+def check_sec023(project, rules):
     refresh_files = [(path, text) for path, text in project.java if REFRESH_RE.search(text)]
     if not refresh_files or any(LOCKING_RE.search(text) for _path, text in refresh_files):
         return
@@ -286,7 +286,7 @@ def check_sec024(project, rules):
         match = LOOKUP_THEN_REVOKE.search(text)
         if match:
             yield make_finding(
-                rules, "SEC024", project, path, line_of(text, match.start()),
+                rules, "SEC023", project, path, line_of(text, match.start()),
                 "A refresh token is looked up and then revoked or replaced, and no lock, version column or "
                 "atomic update was found on the refresh path: two concurrent requests could both succeed.",
                 confidence="medium",
@@ -309,5 +309,5 @@ CHECKS_MORE = {
     "SEC020": check_sec020,
     "SEC021": check_sec021,
     "SEC022": check_sec022,
-    "SEC024": check_sec024,
+    "SEC023": check_sec023,
 }

@@ -5,7 +5,7 @@
     {
       "name": "spring-security-advisor",
       "source": "./plugins/spring-security-advisor",
-      "description": "Spring Security review and map: rule-based scanner plus explanations with official sources."
+      "description": "Security audit for Spring Boot: rule scanner, guided checklist and a deterministic 0-100 score with official sources."
     }
   ],
   "metadata": { "description": "Claude Code plugins for Java and Spring developers." }
