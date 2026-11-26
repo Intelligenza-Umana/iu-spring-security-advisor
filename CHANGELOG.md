@@ -1,5 +1,7 @@
 # Changelog
 
+Project attribution: identified as an Intelligenza Umana project in the README.
+
 Documentation since 1.0.0: added contribution and private reporting guidance.
 
 ## 1.0.0

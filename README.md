@@ -1,5 +1,7 @@
 # spring-security-advisor
 
+**An [Intelligenza Umana](https://github.com/fabiozagaria/intelligenza-umana) project.** See the [official project registry](https://github.com/fabiozagaria/intelligenza-umana/blob/main/docs/PROJECT_REGISTRY.md).
+
 [![tests](https://github.com/fabiozagaria/spring-security-advisor/actions/workflows/test.yml/badge.svg)](https://github.com/fabiozagaria/spring-security-advisor/actions/workflows/test.yml)
 
 A security audit for Spring Boot projects, as a [Claude Code](https://claude.com/claude-code) plugin. It reads a whole repository, tells you what is missing and where the weak spots are, and gives a **score from 0 to 100** you can track over time.
