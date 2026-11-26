@@ -2,6 +2,8 @@
 
 Project attribution: identified as an Intelligenza Umana project in the README.
 
+Documentation update: corrected repository links and clarified the working directory for CLI examples.
+
 Documentation since 1.0.0: added contribution and private reporting guidance.
 
 ## 1.0.0

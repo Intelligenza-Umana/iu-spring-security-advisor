@@ -2,7 +2,7 @@
 
 **An [Intelligenza Umana](https://github.com/fabiozagaria/intelligenza-umana) project.** See the [official project registry](https://github.com/fabiozagaria/intelligenza-umana/blob/main/docs/PROJECT_REGISTRY.md).
 
-[![tests](https://github.com/fabiozagaria/spring-security-advisor/actions/workflows/test.yml/badge.svg)](https://github.com/fabiozagaria/spring-security-advisor/actions/workflows/test.yml)
+[![tests](https://github.com/fabiozagaria/iu-spring-security-advisor/actions/workflows/test.yml/badge.svg)](https://github.com/fabiozagaria/iu-spring-security-advisor/actions/workflows/test.yml)
 
 A security audit for Spring Boot projects, as a [Claude Code](https://claude.com/claude-code) plugin. It reads a whole repository, tells you what is missing and where the weak spots are, and gives a **score from 0 to 100** you can track over time.
 
@@ -23,7 +23,7 @@ Ask Claude to "audit my project": the `audit` skill runs the whole flow below.
 ## Install
 
 ```bash
-claude plugin marketplace add fabiozagaria/spring-security-advisor
+claude plugin marketplace add fabiozagaria/iu-spring-security-advisor
 claude plugin install spring-security-advisor@spring-security-advisor
 ```
 
@@ -127,7 +127,7 @@ Top actions (estimated points gained):
 
 ## The scanner
 
-`plugins/spring-security-advisor/scripts/scan.py` is a standalone CLI (Python 3, standard library only). It reads source files only, works without Maven or a JDK and makes no network calls.
+`plugins/spring-security-advisor/scripts/scan.py` is a standalone CLI (Python 3, standard library only). From the repository root, first run `cd plugins/spring-security-advisor`. It reads source files only, works without Maven or a JDK and makes no network calls.
 
 ```bash
 python3 scripts/scan.py scan path/to/project              # JSON, with findings and signals
@@ -135,7 +135,7 @@ python3 scripts/scan.py scan path/to/project --format text
 python3 scripts/scan.py scan path/to/project --fail-on high   # exit 1 for CI
 python3 scripts/scan.py map  path/to/project
 python3 scripts/scan.py checklist
-python3 scripts/scan.py score path/to/project --answers answers.json [--baseline last.json] [--save] [--format text]
+python3 scripts/scan.py score path/to/project --answers answers.json --format text
 ```
 
 The JSON output of these commands is stable from 1.0: fields are only added.
@@ -155,6 +155,8 @@ The JSON output of these commands is stable from 1.0: fields are only added.
 - Dependency checks, Gradle Kotlin support, a more precise Java-based scanner.
 
 ## Tests
+
+From the repository root:
 
 ```bash
 python3 -m unittest discover -s tests
