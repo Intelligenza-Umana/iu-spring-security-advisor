@@ -160,6 +160,10 @@ python3 -m unittest discover -s tests
 
 The tests cover every rule with a positive and a negative case, the signals, the checklist file, the evidence validation and the score formula, and run the scanner on fixture projects (`vulnerable`, `fixed`, `stateless-api`, `refresh-race`, `refresh-safe`).
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution and private security reporting guidance.
+
 ## License
 
 MIT

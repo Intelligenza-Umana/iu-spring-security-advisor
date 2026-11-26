@@ -1,5 +1,7 @@
 # Changelog
 
+Documentation since 1.0.0: added contribution and private reporting guidance.
+
 ## 1.0.0
 - `audit` skill and `scan.py score`: a deterministic 0-100 score with a grade, per-category scores, coverage, caps and the top actions. The model answers a checklist with `file:line` evidence; the script validates the evidence and computes the score.
 - 16 new rules (SEC008 to SEC023), 23 in total: secrets in configuration files, actuator exposure, stack traces, cookie flags, CORS, catch-all `permitAll`, disabled headers, unsigned JWT parsing, JWT without expiration, deprecated or weak password encoders, BCrypt cost, insecure randomness, SQL by concatenation, refresh token revoked without a lock.
