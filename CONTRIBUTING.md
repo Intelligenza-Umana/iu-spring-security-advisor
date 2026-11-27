@@ -1,6 +1,6 @@
 # Contributing
 
-Contributions are welcome, including from developers who are new to security tooling. Open an issue describing the problem, evidence and expected behavior before substantial changes. Do not include exploitable vulnerability details or secrets in public issues; follow the foundation's [security policy](https://github.com/fabiozagaria/intelligenza-umana/blob/main/SECURITY.md) for private reporting.
+Contributions are welcome, including from developers who are new to security tooling. Open an issue describing the problem, evidence and expected behavior before substantial changes. Do not include exploitable vulnerability details or secrets in public issues; follow the foundation's [security policy](https://github.com/Intelligenza-Umana/intelligenza-umana/blob/main/SECURITY.md) for private reporting.
 
 For scanner rules, explain the threat and cite an authoritative source. Add positive and negative fixture cases, account for false positives and false negatives, and document limitations. The score is an aid to review, not a security certification. Keep the scanner dependency-free and preserve documented output compatibility.
 
